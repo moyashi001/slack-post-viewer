@@ -5,7 +5,7 @@
   const CHANNELS_KEY = 'slack_query_channels';
 
   const state = {
-    users: [],      // string[]
+    users: [],      // { name: string, id: string }[]
     channels: [],   // string[]
     selectedUsers: new Set(),
     selectedChannels: new Set(),
@@ -21,7 +21,7 @@
     bindEvents();
     registerServiceWorker();
 
-    state.users = loadList(USERS_KEY);
+    state.users = loadUsers();
     state.channels = loadList(CHANNELS_KEY);
 
     renderUserManageList();
@@ -48,6 +48,7 @@
     el.userManageList = document.getElementById('user-manage-list');
     el.formAddUser = document.getElementById('form-add-user');
     el.inputAddUser = document.getElementById('input-add-user');
+    el.inputAddUserId = document.getElementById('input-add-user-id');
     el.userFormError = document.getElementById('user-form-error');
 
     el.channelManageList = document.getElementById('channel-manage-list');
@@ -84,7 +85,7 @@
 
     el.formAddUser.addEventListener('submit', (e) => {
       e.preventDefault();
-      addItem(state.users, USERS_KEY, el.inputAddUser, el.userFormError, () => {
+      addUser(() => {
         renderUserManageList();
         renderConditionUserList();
       });
@@ -134,7 +135,147 @@
     return raw.trim().replace(/^[@#]/, '');
   }
 
-  // ---------- ユーザー/チャンネル管理 (共通ロジック) ----------
+  function normalizeMemberId(raw) {
+    return raw.trim().replace(/^<@/, '').replace(/>$/, '').replace(/^@/, '');
+  }
+
+  // ---------- ユーザー管理 (name + 任意のSlackメンバーID) ----------
+
+  function loadUsers() {
+    const raw = loadList(USERS_KEY);
+    return raw.map((item) => (
+      typeof item === 'string' ? { name: item, id: '' } : { name: item.name, id: item.id || '' }
+    ));
+  }
+
+  function saveUsers() {
+    saveList(USERS_KEY, state.users);
+  }
+
+  function addUser(onDone) {
+    el.userFormError.classList.add('hidden');
+    const name = normalizeName(el.inputAddUser.value);
+    const id = normalizeMemberId(el.inputAddUserId.value);
+
+    if (!name) {
+      el.userFormError.textContent = '名前を入力してください。';
+      el.userFormError.classList.remove('hidden');
+      return;
+    }
+    if (state.users.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
+      el.userFormError.textContent = 'すでに登録されています。';
+      el.userFormError.classList.remove('hidden');
+      return;
+    }
+
+    state.users.push({ name, id });
+    saveUsers();
+    el.inputAddUser.value = '';
+    el.inputAddUserId.value = '';
+    onDone();
+  }
+
+  function removeUser(name, onDone) {
+    const idx = state.users.findIndex((u) => u.name === name);
+    if (idx !== -1) state.users.splice(idx, 1);
+    saveUsers();
+    onDone();
+  }
+
+  function renameUser(oldName, newNameRaw, newIdRaw, onDone) {
+    const newName = normalizeName(newNameRaw);
+    if (!newName) return;
+    const idx = state.users.findIndex((u) => u.name === oldName);
+    if (idx === -1) return;
+    state.users[idx] = { name: newName, id: normalizeMemberId(newIdRaw || '') };
+    saveUsers();
+    onDone();
+  }
+
+  function renderUserManageList() {
+    const container = el.userManageList;
+    container.innerHTML = '';
+
+    if (state.users.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'manage-empty';
+      empty.textContent = '登録されていません';
+      container.appendChild(empty);
+      return;
+    }
+
+    const onChange = () => {
+      renderUserManageList();
+      renderConditionUserList();
+    };
+
+    state.users.forEach((user) => {
+      const row = document.createElement('div');
+      row.className = 'manage-row';
+
+      const nameWrap = document.createElement('span');
+      nameWrap.className = 'manage-name';
+      nameWrap.textContent = user.id ? `${user.name} (${user.id})` : user.name;
+
+      const btnEdit = document.createElement('button');
+      btnEdit.type = 'button';
+      btnEdit.textContent = '編集';
+      btnEdit.addEventListener('click', () => {
+        startEditUser(row, user, onChange);
+      });
+
+      const btnDelete = document.createElement('button');
+      btnDelete.type = 'button';
+      btnDelete.className = 'btn-delete';
+      btnDelete.textContent = '削除';
+      btnDelete.addEventListener('click', () => {
+        removeUser(user.name, onChange);
+      });
+
+      row.appendChild(nameWrap);
+      row.appendChild(btnEdit);
+      row.appendChild(btnDelete);
+      container.appendChild(row);
+    });
+  }
+
+  function startEditUser(row, user, onChange) {
+    row.innerHTML = '';
+    row.classList.add('manage-row-editing');
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'manage-edit-input';
+    nameInput.value = user.name;
+    nameInput.placeholder = 'ユーザー名';
+
+    const idInput = document.createElement('input');
+    idInput.type = 'text';
+    idInput.className = 'manage-edit-input';
+    idInput.value = user.id;
+    idInput.placeholder = '任意: SlackメンバーID';
+
+    const btnSave = document.createElement('button');
+    btnSave.type = 'button';
+    btnSave.className = 'btn-save';
+    btnSave.textContent = '保存';
+    btnSave.addEventListener('click', () => {
+      renameUser(user.name, nameInput.value, idInput.value, onChange);
+    });
+
+    const btnCancel = document.createElement('button');
+    btnCancel.type = 'button';
+    btnCancel.textContent = 'キャンセル';
+    btnCancel.addEventListener('click', onChange);
+
+    row.appendChild(nameInput);
+    row.appendChild(idInput);
+    row.appendChild(btnSave);
+    row.appendChild(btnCancel);
+    nameInput.focus();
+  }
+
+  // ---------- チャンネル管理 (共通ロジック) ----------
 
   function addItem(list, storageKey, inputEl, errorEl, onDone) {
     errorEl.classList.add('hidden');
@@ -243,13 +384,6 @@
     input.focus();
   }
 
-  function renderUserManageList() {
-    renderManageList(el.userManageList, state.users, USERS_KEY, () => {
-      renderUserManageList();
-      renderConditionUserList();
-    });
-  }
-
   function renderChannelManageList() {
     renderManageList(el.channelManageList, state.channels, CHANNELS_KEY, () => {
       renderChannelManageList();
@@ -263,7 +397,7 @@
     renderConditionCheckList(
       el.conditionUserList,
       el.conditionUserEmpty,
-      state.users,
+      state.users.map((u) => u.name),
       state.selectedUsers
     );
   }
@@ -353,7 +487,7 @@
       return;
     }
 
-    const userClause = buildOrClause(selectedUsers, 'from:@');
+    const userClause = buildUserClause(selectedUsers);
     const channelClause = buildOrClause(selectedChannels, 'in:#');
     const dateClause = buildDateClause(dateFrom, dateTo);
 
@@ -374,6 +508,16 @@
     if (names.length === 0) return '';
     const sorted = [...names].sort((a, b) => a.localeCompare(b, 'ja'));
     const terms = sorted.map((name) => `${prefix}${name}`);
+    return terms.length > 1 ? `( ${terms.join(' OR ')} )` : terms[0];
+  }
+
+  function buildUserClause(selectedNames) {
+    if (selectedNames.length === 0) return '';
+    const selected = state.users.filter((u) => selectedNames.includes(u.name));
+    const sorted = selected.slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    // メンバーIDが登録されていればSlackのメンション形式(from:<@ID>)を使い、
+    // 貼り付けただけでもユーザーとして認識されやすくする
+    const terms = sorted.map((u) => (u.id ? `from:<@${u.id}>` : `from:@${u.name}`));
     return terms.length > 1 ? `( ${terms.join(' OR ')} )` : terms[0];
   }
 

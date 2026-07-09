@@ -1,4 +1,4 @@
-const CACHE_NAME = 'slack-post-viewer-v3';
+const CACHE_NAME = 'slack-post-viewer-v4';
 const APP_SHELL = [
   './',
   'index.html',

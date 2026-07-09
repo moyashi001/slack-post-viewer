@@ -186,6 +186,14 @@ body {
   min-width: 0;
 }
 
+.manage-row-editing {
+  flex-wrap: wrap;
+}
+
+.manage-row-editing .manage-edit-input {
+  flex: 1 1 100%;
+}
+
 .manage-row button {
   flex-shrink: 0;
   padding: 6px 10px;
@@ -227,6 +235,18 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 15px;
+}
+
+.add-form-user {
+  flex-wrap: wrap;
+}
+
+.add-form-user input {
+  flex: 1 1 100%;
+}
+
+.add-form-user .btn-add {
+  flex: 1 1 100%;
 }
 
 .add-form .btn-add {

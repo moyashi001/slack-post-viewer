@@ -35,10 +35,12 @@
 
     <div id="user-manage-list" class="manage-list"></div>
 
-    <form id="form-add-user" class="add-form">
+    <form id="form-add-user" class="add-form add-form-user">
       <input type="text" id="input-add-user" placeholder="ユーザー名 (例: tanaka)" autocomplete="off">
+      <input type="text" id="input-add-user-id" placeholder="任意: SlackメンバーID (例: U0123ABCD)" autocomplete="off">
       <button type="submit" class="btn btn-primary btn-add">追加</button>
     </form>
+    <p class="hint-text">メンバーIDを入力すると、貼り付け時にSlackがユーザーとして認識しやすくなります。</p>
     <p id="user-form-error" class="error-text hidden"></p>
   </section>
 
