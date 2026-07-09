@@ -859,10 +859,17 @@
     return terms.length > 1 ? `( ${terms.join(' OR ')} )` : terms[0];
   }
 
+  function shiftDateString(dateStr, days) {
+    const d = new Date(`${dateStr}T00:00:00`);
+    d.setDate(d.getDate() + days);
+    return formatDateInput(d);
+  }
+
   function buildDateClause(fromStr, toStr) {
+    // Slackのafter:/before:は指定日を含まないため、境界を1日ずらして選択範囲を含める
     const parts = [];
-    if (fromStr) parts.push(`after:${fromStr}`);
-    if (toStr) parts.push(`before:${toStr}`);
+    if (fromStr) parts.push(`after:${shiftDateString(fromStr, -1)}`);
+    if (toStr) parts.push(`before:${shiftDateString(toStr, 1)}`);
     return parts.join(' ');
   }
 
