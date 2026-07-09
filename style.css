@@ -90,6 +90,27 @@ body {
   background: #f0f0f0;
 }
 
+.home-usage {
+  margin-top: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.home-usage h2 {
+  font-size: 14px;
+  margin: 0 0 10px;
+  color: var(--slack-purple);
+}
+
+.home-usage ol {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text);
+}
+
 .data-io {
   margin-top: 28px;
 }
@@ -193,6 +214,27 @@ body {
 .app-header h2 {
   font-size: 18px;
   margin: 0;
+  flex: 1;
+}
+
+.user-select-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.user-select-header label {
+  margin: 0;
+}
+
+.select-all-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-sub);
 }
 
 /* ユーザー/チャンネル管理画面 */

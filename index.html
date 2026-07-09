@@ -25,6 +25,16 @@
       <button id="btn-goto-channels" class="btn btn-slack" type="button">チャンネル管理</button>
     </nav>
 
+    <div class="home-usage">
+      <h2>使い方</h2>
+      <ol>
+        <li>「ユーザー管理」で検索したい相手のSlackメンバーIDを登録する</li>
+        <li>「チャンネル管理」で対象のチャンネル名を登録する（任意）</li>
+        <li>「検索条件を設定する」でユーザー・チャンネル・期間を選び、検索文言を生成する</li>
+        <li>「コピーする」でコピーし、Slackの検索欄に貼り付ける</li>
+      </ol>
+    </div>
+
     <div class="data-io">
       <div class="data-io-links">
         <button id="btn-export" class="btn-text btn-text-light" type="button">他の端末に引き継ぐ (エクスポート)</button>
@@ -85,10 +95,17 @@
     <header class="app-header">
       <button class="btn-text btn-home" data-back="home" type="button">← 戻る</button>
       <h2>検索条件</h2>
+      <button id="btn-clear-condition" class="btn-text" type="button">条件をクリア</button>
     </header>
 
     <div class="form-group">
-      <label>ユーザー選択</label>
+      <div class="user-select-header">
+        <label>ユーザー選択</label>
+        <label class="select-all-row">
+          <input type="checkbox" id="chk-select-all-users">
+          <span>全選択</span>
+        </label>
+      </div>
       <div id="condition-user-list" class="check-list"></div>
       <p id="condition-user-empty" class="empty-text hidden">
         登録済みユーザーがいません。<button class="btn-text" data-nav="users" type="button">ユーザー管理へ</button>

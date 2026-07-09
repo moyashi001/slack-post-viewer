@@ -64,12 +64,14 @@
 
     el.conditionUserList = document.getElementById('condition-user-list');
     el.conditionUserEmpty = document.getElementById('condition-user-empty');
+    el.chkSelectAllUsers = document.getElementById('chk-select-all-users');
     el.conditionChannelList = document.getElementById('condition-channel-list');
     el.conditionChannelEmpty = document.getElementById('condition-channel-empty');
     el.presetButtons = Array.from(document.querySelectorAll('.preset-btn'));
     el.dateFrom = document.getElementById('date-from');
     el.dateTo = document.getElementById('date-to');
     el.btnGenerate = document.getElementById('btn-generate');
+    el.btnClearCondition = document.getElementById('btn-clear-condition');
     el.conditionError = document.getElementById('condition-error');
 
     el.btnSavePreset = document.getElementById('btn-save-preset');
@@ -129,6 +131,9 @@
     el.presetButtons.forEach((btn) => {
       btn.addEventListener('click', () => applyPreset(btn.dataset.preset, btn));
     });
+
+    el.chkSelectAllUsers.addEventListener('change', onSelectAllUsersChange);
+    el.btnClearCondition.addEventListener('click', clearCondition);
 
     el.btnGenerate.addEventListener('click', generateQuery);
     el.btnCopy.addEventListener('click', copyResult);
@@ -469,8 +474,30 @@
       el.conditionUserList,
       el.conditionUserEmpty,
       state.users.map((u) => ({ value: u.name, label: u.id ? u.name : `${u.name} (ID未登録)` })),
-      state.selectedUsers
+      state.selectedUsers,
+      updateSelectAllUsersCheckbox
     );
+    updateSelectAllUsersCheckbox();
+  }
+
+  function onSelectAllUsersChange() {
+    if (el.chkSelectAllUsers.checked) {
+      state.users.forEach((u) => state.selectedUsers.add(u.name));
+    } else {
+      state.selectedUsers.clear();
+    }
+    renderConditionUserList();
+  }
+
+  function updateSelectAllUsersCheckbox() {
+    if (state.users.length === 0) {
+      el.chkSelectAllUsers.checked = false;
+      el.chkSelectAllUsers.indeterminate = false;
+      return;
+    }
+    const selectedCount = state.users.filter((u) => state.selectedUsers.has(u.name)).length;
+    el.chkSelectAllUsers.checked = selectedCount === state.users.length;
+    el.chkSelectAllUsers.indeterminate = selectedCount > 0 && selectedCount < state.users.length;
   }
 
   function renderConditionChannelList() {
@@ -482,7 +509,7 @@
     );
   }
 
-  function renderConditionCheckList(container, emptyEl, items, selectedSet) {
+  function renderConditionCheckList(container, emptyEl, items, selectedSet, onToggle) {
     // 削除されたアイテムが選択状態に残らないようにする
     const values = items.map((item) => item.value);
     Array.from(selectedSet).forEach((value) => {
@@ -514,6 +541,7 @@
           selectedSet.delete(value);
         }
         item.classList.remove('field-error-bg');
+        if (onToggle) onToggle();
       });
 
       const span = document.createElement('span');
@@ -757,6 +785,22 @@
   function showPresetMessage(text) {
     el.presetMessage.textContent = text;
     el.presetMessage.classList.remove('hidden');
+  }
+
+  function clearCondition() {
+    state.selectedUsers.clear();
+    state.selectedChannels.clear();
+    el.dateFrom.value = '';
+    el.dateTo.value = '';
+    const defaultSort = document.querySelector('input[name="sort"][value="user"]');
+    if (defaultSort) defaultSort.checked = true;
+    el.presetButtons.forEach((b) => b.classList.remove('active'));
+
+    el.conditionError.classList.add('hidden');
+    clearConditionFieldErrors();
+
+    renderConditionUserList();
+    renderConditionChannelList();
   }
 
   // ---------- 検索文言生成 ----------
