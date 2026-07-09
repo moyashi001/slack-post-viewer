@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>Slack投稿ビューア</title>
+<title>Slack検索文言ジェネレーター</title>
 <meta name="theme-color" content="#4A154B">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg">
@@ -13,106 +13,126 @@
 <body>
 <div id="app">
 
-  <!-- 1. ログイン画面 -->
-  <section id="screen-login" class="screen">
-    <div class="login-card">
-      <h1>Slack投稿ビューア</h1>
-      <p class="sub">Slackにログインして投稿を検索します</p>
-
-      <button id="btn-slack-login" class="btn btn-slack" type="button">
-        <svg viewBox="0 0 122.8 122.8" width="20" height="20" aria-hidden="true">
-          <path d="M25.8 77.6c0 7.1-5.8 12.9-12.9 12.9S0 84.7 0 77.6s5.8-12.9 12.9-12.9h12.9v12.9z" fill="#e01e5a"/>
-          <path d="M32.3 77.6c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V77.6z" fill="#e01e5a"/>
-          <path d="M45.2 25.8C38.1 25.8 32.3 20 32.3 12.9S38.1 0 45.2 0s12.9 5.8 12.9 12.9v12.9H45.2z" fill="#36c5f0"/>
-          <path d="M45.2 32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H12.9C5.8 58.1 0 52.3 0 45.2s5.8-12.9 12.9-12.9h32.3z" fill="#36c5f0"/>
-          <path d="M97 45.2c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9-5.8 12.9-12.9 12.9H97V45.2z" fill="#2eb67d"/>
-          <path d="M90.5 45.2c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V12.9C64.7 5.8 70.5 0 77.6 0s12.9 5.8 12.9 12.9v32.3z" fill="#2eb67d"/>
-          <path d="M77.6 97c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9-12.9-5.8-12.9-12.9V97h12.9z" fill="#ecb22e"/>
-          <path d="M77.6 90.5c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H77.6z" fill="#ecb22e"/>
-        </svg>
-        Slackでログイン
-      </button>
-
-      <label class="remember">
-        <input type="checkbox" id="chk-remember" checked>
-        ログイン状態を記憶する
-      </label>
-
-      <p id="login-error" class="error-text hidden"></p>
+  <!-- 1. ホーム画面 -->
+  <section id="screen-home" class="screen">
+    <div class="home-hero">
+      <h1>Slack検索文言<br>ジェネレーター</h1>
+      <p class="sub">条件を選ぶだけでSlack検索欄に貼る文言を作成します</p>
     </div>
+    <nav class="home-nav">
+      <button id="btn-goto-condition" class="btn btn-primary" type="button">検索条件を設定する</button>
+      <button id="btn-goto-users" class="btn btn-slack" type="button">ユーザー管理</button>
+      <button id="btn-goto-channels" class="btn btn-slack" type="button">チャンネル管理</button>
+    </nav>
   </section>
 
-  <!-- 2. お気に入りユーザー管理画面 -->
-  <section id="screen-favorites" class="screen hidden">
+  <!-- 2. ユーザー管理画面 -->
+  <section id="screen-users" class="screen hidden">
     <header class="app-header">
-      <button id="btn-favorites-back" class="btn-text" type="button">← 戻る</button>
-      <h2>お気に入りユーザー管理</h2>
+      <button class="btn-text btn-home" data-back="home" type="button">← 戻る</button>
+      <h2>ユーザー管理</h2>
     </header>
 
-    <div class="form-group">
-      <label for="favorites-filter">ユーザー選択</label>
-      <input type="text" id="favorites-filter" placeholder="ユーザー名で絞り込み">
-      <div id="favorites-manage-list" class="user-list"></div>
-    </div>
+    <div id="user-manage-list" class="manage-list"></div>
+
+    <form id="form-add-user" class="add-form">
+      <input type="text" id="input-add-user" placeholder="ユーザー名 (例: tanaka)" autocomplete="off">
+      <button type="submit" class="btn btn-primary btn-add">追加</button>
+    </form>
+    <p id="user-form-error" class="error-text hidden"></p>
   </section>
 
-  <!-- 3. 条件入力画面 -->
+  <!-- 3. チャンネル管理画面 -->
+  <section id="screen-channels" class="screen hidden">
+    <header class="app-header">
+      <button class="btn-text btn-home" data-back="home" type="button">← 戻る</button>
+      <h2>チャンネル管理</h2>
+    </header>
+
+    <div id="channel-manage-list" class="manage-list"></div>
+
+    <form id="form-add-channel" class="add-form">
+      <input type="text" id="input-add-channel" placeholder="チャンネル名 (例: general)" autocomplete="off">
+      <button type="submit" class="btn btn-primary btn-add">追加</button>
+    </form>
+    <p id="channel-form-error" class="error-text hidden"></p>
+  </section>
+
+  <!-- 4. 条件入力画面 -->
   <section id="screen-condition" class="screen hidden">
     <header class="app-header">
-      <h2>投稿を検索</h2>
-      <div class="header-actions">
-        <button id="btn-manage-favorites" class="btn-text" type="button">お気に入り管理</button>
-        <button id="btn-logout" class="btn-text" type="button">ログアウト</button>
-      </div>
+      <button class="btn-text btn-home" data-back="home" type="button">← 戻る</button>
+      <h2>検索条件</h2>
     </header>
 
     <div class="form-group">
-      <label for="user-filter">お気に入りユーザー</label>
-      <input type="text" id="user-filter" placeholder="ユーザー名で絞り込み">
-      <div id="user-list" class="user-list"></div>
-      <p id="favorites-empty-hint" class="empty-text hidden">
-        お気に入りユーザーが登録されていません。<br>
-        <button id="btn-goto-favorites" class="btn-text" type="button">お気に入りを管理する</button>
+      <label>ユーザー選択</label>
+      <div id="condition-user-list" class="check-list"></div>
+      <p id="condition-user-empty" class="empty-text hidden">
+        登録済みユーザーがいません。<button class="btn-text" data-nav="users" type="button">ユーザー管理へ</button>
       </p>
     </div>
 
-    <div class="form-group date-range">
-      <div class="date-field">
-        <label for="date-from">開始日</label>
-        <input type="date" id="date-from">
+    <div class="form-group">
+      <label>チャンネル選択</label>
+      <div id="condition-channel-list" class="check-list"></div>
+      <p id="condition-channel-empty" class="empty-text hidden">
+        登録済みチャンネルがありません。<button class="btn-text" data-nav="channels" type="button">チャンネル管理へ</button>
+      </p>
+    </div>
+
+    <div class="form-group">
+      <label>日付範囲</label>
+      <div class="preset-bar">
+        <button class="preset-btn" data-days="1" type="button">1日</button>
+        <button class="preset-btn" data-days="3" type="button">3日</button>
+        <button class="preset-btn" data-days="5" type="button">5日</button>
+        <button class="preset-btn" data-days="10" type="button">10日</button>
+        <button class="preset-btn" data-days="20" type="button">20日</button>
+        <button class="preset-btn" data-days="30" type="button">30日</button>
       </div>
-      <div class="date-field">
-        <label for="date-to">終了日</label>
-        <input type="date" id="date-to">
+      <div class="date-range">
+        <div class="date-field">
+          <label for="date-from">開始日</label>
+          <input type="date" id="date-from">
+        </div>
+        <div class="date-field">
+          <label for="date-to">終了日</label>
+          <input type="date" id="date-to">
+        </div>
       </div>
     </div>
 
-    <button id="btn-fetch" class="btn btn-primary" type="button">投稿を検索する</button>
+    <div class="form-group">
+      <label>並び順</label>
+      <div class="sort-choice">
+        <label class="radio-item">
+          <input type="radio" name="sort" value="user" checked>
+          <span>ユーザー名順</span>
+        </label>
+        <label class="radio-item">
+          <input type="radio" name="sort" value="date">
+          <span>日付順</span>
+        </label>
+      </div>
+    </div>
+
+    <button id="btn-generate" class="btn btn-primary" type="button">検索文言を生成する</button>
     <p id="condition-error" class="error-text hidden"></p>
   </section>
 
-  <!-- 3. 取得中画面 -->
-  <section id="screen-loading" class="screen hidden">
-    <div class="loading-box">
-      <div class="spinner"></div>
-      <p id="loading-message">投稿を取得しています…</p>
-    </div>
-  </section>
-
-  <!-- 4. 一覧表示画面 -->
-  <section id="screen-list" class="screen hidden">
+  <!-- 5. 結果画面 -->
+  <section id="screen-result" class="screen hidden">
     <header class="app-header">
-      <button id="btn-back" class="btn-text" type="button">← 戻る</button>
-      <h2>検索結果 (<span id="result-count">0</span>)</h2>
+      <button class="btn-text" data-back="condition" type="button">← 戻る</button>
+      <h2>検索文言</h2>
     </header>
 
-    <div class="sort-bar">
-      <button class="sort-btn" data-sort="user" type="button">ユーザー名 <span class="sort-icon" data-icon="user"></span></button>
-      <button class="sort-btn" data-sort="date" type="button">日付 <span class="sort-icon" data-icon="date"></span></button>
-    </div>
-
-    <ul id="post-list" class="post-list"></ul>
-    <p id="empty-message" class="empty-text hidden">条件に一致する投稿が見つかりませんでした</p>
+    <pre id="result-query" class="result-query"></pre>
+    <button id="btn-copy" class="btn btn-primary" type="button">コピーする</button>
+    <p id="copy-message" class="copy-message hidden">コピーしました</p>
+    <p class="hint-text">Slackの検索欄に貼り付けるだけで検索できます。</p>
+    <button class="btn-text btn-home" data-back="home" type="button">ホームに戻る</button>
   </section>
 
 </div>

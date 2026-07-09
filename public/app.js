@@ -1,573 +1,409 @@
 (() => {
   'use strict';
 
-  const TOKEN_KEY = 'slack_access_token';
-  const REMEMBER_KEY = 'slack_remember';
-  const FAVORITES_KEY = 'slack_favorite_users';
-
-  const SLACK_AUTHORIZE_URL = 'https://slack.com/oauth/v2/authorize';
-  const SLACK_API_BASE = 'https://slack.com/api';
+  const USERS_KEY = 'slack_query_users';
+  const CHANNELS_KEY = 'slack_query_channels';
 
   const state = {
-    config: null,
-    token: null,
-    users: [],           // { id, name, image }
-    favoriteIds: new Set(),
-    selectedUserIds: new Set(),
-    posts: [],            // { userId, userName, text, ts, permalink }
-    sort: { key: 'date', asc: false },
+    users: [],      // string[]
+    channels: [],   // string[]
+    selectedUsers: new Set(),
+    selectedChannels: new Set(),
+    sort: 'user',   // 'user' | 'date'
   };
 
   const el = {};
 
   document.addEventListener('DOMContentLoaded', init);
 
-  async function init() {
+  function init() {
     cacheElements();
     bindEvents();
     registerServiceWorker();
 
-    state.favoriteIds = new Set(loadFavoritesFromStorage());
+    state.users = loadList(USERS_KEY);
+    state.channels = loadList(CHANNELS_KEY);
 
-    try {
-      state.config = await fetchJson('/api/config');
-    } catch (e) {
-      showLoginError('サーバー設定の取得に失敗しました。');
-      return;
-    }
+    renderUserManageList();
+    renderChannelManageList();
+    renderConditionUserList();
+    renderConditionChannelList();
 
-    const code = getQueryParam('code');
-    if (code) {
-      await handleOAuthCallback(code);
-      return;
-    }
-
-    const savedToken = localStorage.getItem(TOKEN_KEY);
-    if (savedToken) {
-      state.token = savedToken;
-      await enterConditionScreen();
-      return;
-    }
-
-    showScreen('login');
+    showScreen('home');
   }
 
   function cacheElements() {
     el.screens = {
-      login: document.getElementById('screen-login'),
-      favorites: document.getElementById('screen-favorites'),
+      home: document.getElementById('screen-home'),
+      users: document.getElementById('screen-users'),
+      channels: document.getElementById('screen-channels'),
       condition: document.getElementById('screen-condition'),
-      loading: document.getElementById('screen-loading'),
-      list: document.getElementById('screen-list'),
+      result: document.getElementById('screen-result'),
     };
-    el.btnSlackLogin = document.getElementById('btn-slack-login');
-    el.chkRemember = document.getElementById('chk-remember');
-    el.loginError = document.getElementById('login-error');
 
-    el.btnFavoritesBack = document.getElementById('btn-favorites-back');
-    el.favoritesFilter = document.getElementById('favorites-filter');
-    el.favoritesManageList = document.getElementById('favorites-manage-list');
+    el.btnGotoCondition = document.getElementById('btn-goto-condition');
+    el.btnGotoUsers = document.getElementById('btn-goto-users');
+    el.btnGotoChannels = document.getElementById('btn-goto-channels');
 
-    el.btnManageFavorites = document.getElementById('btn-manage-favorites');
-    el.btnLogout = document.getElementById('btn-logout');
-    el.userFilter = document.getElementById('user-filter');
-    el.userList = document.getElementById('user-list');
-    el.favoritesEmptyHint = document.getElementById('favorites-empty-hint');
-    el.btnGotoFavorites = document.getElementById('btn-goto-favorites');
+    el.userManageList = document.getElementById('user-manage-list');
+    el.formAddUser = document.getElementById('form-add-user');
+    el.inputAddUser = document.getElementById('input-add-user');
+    el.userFormError = document.getElementById('user-form-error');
+
+    el.channelManageList = document.getElementById('channel-manage-list');
+    el.formAddChannel = document.getElementById('form-add-channel');
+    el.inputAddChannel = document.getElementById('input-add-channel');
+    el.channelFormError = document.getElementById('channel-form-error');
+
+    el.conditionUserList = document.getElementById('condition-user-list');
+    el.conditionUserEmpty = document.getElementById('condition-user-empty');
+    el.conditionChannelList = document.getElementById('condition-channel-list');
+    el.conditionChannelEmpty = document.getElementById('condition-channel-empty');
+    el.presetButtons = Array.from(document.querySelectorAll('.preset-btn'));
     el.dateFrom = document.getElementById('date-from');
     el.dateTo = document.getElementById('date-to');
-    el.btnFetch = document.getElementById('btn-fetch');
+    el.btnGenerate = document.getElementById('btn-generate');
     el.conditionError = document.getElementById('condition-error');
 
-    el.loadingMessage = document.getElementById('loading-message');
-
-    el.btnBack = document.getElementById('btn-back');
-    el.resultCount = document.getElementById('result-count');
-    el.sortButtons = Array.from(document.querySelectorAll('.sort-btn'));
-    el.postList = document.getElementById('post-list');
-    el.emptyMessage = document.getElementById('empty-message');
+    el.resultQuery = document.getElementById('result-query');
+    el.btnCopy = document.getElementById('btn-copy');
+    el.copyMessage = document.getElementById('copy-message');
   }
 
   function bindEvents() {
-    el.btnSlackLogin.addEventListener('click', startSlackLogin);
-    el.btnLogout.addEventListener('click', logout);
+    el.btnGotoCondition.addEventListener('click', () => showScreen('condition'));
+    el.btnGotoUsers.addEventListener('click', () => showScreen('users'));
+    el.btnGotoChannels.addEventListener('click', () => showScreen('channels'));
 
-    el.btnManageFavorites.addEventListener('click', () => {
-      showScreen('favorites');
-      renderFavoritesManageList();
+    document.querySelectorAll('[data-back]').forEach((btn) => {
+      btn.addEventListener('click', () => showScreen(btn.dataset.back));
     });
-    el.btnGotoFavorites.addEventListener('click', () => {
-      showScreen('favorites');
-      renderFavoritesManageList();
+    document.querySelectorAll('[data-nav]').forEach((btn) => {
+      btn.addEventListener('click', () => showScreen(btn.dataset.nav));
     });
-    el.btnFavoritesBack.addEventListener('click', () => {
-      renderConditionUserList();
-      showScreen('condition');
-    });
-    el.favoritesFilter.addEventListener('input', () => renderFavoritesManageList());
 
-    el.userFilter.addEventListener('input', () => renderConditionUserList());
-    el.btnFetch.addEventListener('click', fetchPosts);
-    el.btnBack.addEventListener('click', () => showScreen('condition'));
-    el.sortButtons.forEach((btn) => {
-      btn.addEventListener('click', () => onSortClick(btn.dataset.sort));
+    el.formAddUser.addEventListener('submit', (e) => {
+      e.preventDefault();
+      addItem(state.users, USERS_KEY, el.inputAddUser, el.userFormError, () => {
+        renderUserManageList();
+        renderConditionUserList();
+      });
     });
+
+    el.formAddChannel.addEventListener('submit', (e) => {
+      e.preventDefault();
+      addItem(state.channels, CHANNELS_KEY, el.inputAddChannel, el.channelFormError, () => {
+        renderChannelManageList();
+        renderConditionChannelList();
+      });
+    });
+
+    el.presetButtons.forEach((btn) => {
+      btn.addEventListener('click', () => applyPreset(Number(btn.dataset.days), btn));
+    });
+
+    el.btnGenerate.addEventListener('click', generateQuery);
+    el.btnCopy.addEventListener('click', copyResult);
   }
 
   // ---------- 画面制御 ----------
 
   function showScreen(name) {
+    if (!el.screens[name]) return;
     Object.entries(el.screens).forEach(([key, node]) => {
       node.classList.toggle('hidden', key !== name);
     });
   }
 
-  function showLoginError(message) {
-    el.loginError.textContent = message;
-    el.loginError.classList.remove('hidden');
-    showScreen('login');
-  }
+  // ---------- LocalStorage ----------
 
-  function showConditionError(message) {
-    el.conditionError.textContent = message;
-    el.conditionError.classList.remove('hidden');
-  }
-
-  function clearConditionError() {
-    el.conditionError.classList.add('hidden');
-    el.conditionError.textContent = '';
-  }
-
-  function setLoadingMessage(message) {
-    el.loadingMessage.textContent = message;
-  }
-
-  // ---------- OAuth (ユーザートークン) ----------
-
-  function startSlackLogin() {
-    if (!state.config || !state.config.clientId) {
-      showLoginError('Slackアプリの設定(client_id)が見つかりません。');
-      return;
-    }
-    localStorage.setItem(REMEMBER_KEY, el.chkRemember.checked ? '1' : '0');
-
-    const url = new URL(SLACK_AUTHORIZE_URL);
-    url.searchParams.set('client_id', state.config.clientId);
-    url.searchParams.set('user_scope', state.config.userScope);
-    url.searchParams.set('redirect_uri', state.config.redirectUri);
-    window.location.href = url.toString();
-  }
-
-  async function handleOAuthCallback(code) {
-    showScreen('loading');
-    setLoadingMessage('ログイン処理中…');
-
-    // アドレスバーからcodeを消してリロード時の再送信を防ぐ
-    window.history.replaceState({}, document.title, window.location.pathname);
-
+  function loadList(key) {
     try {
-      const result = await fetchJson('/api/oauth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      });
-
-      state.token = result.accessToken;
-      const remember = localStorage.getItem(REMEMBER_KEY) !== '0';
-      if (remember) {
-        localStorage.setItem(TOKEN_KEY, state.token);
-      }
-
-      await enterConditionScreen();
-    } catch (e) {
-      showLoginError('Slackログインに失敗しました。もう一度お試しください。');
-    }
-  }
-
-  function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REMEMBER_KEY);
-    state.token = null;
-    state.users = [];
-    state.selectedUserIds.clear();
-    state.posts = [];
-    showScreen('login');
-  }
-
-  // ---------- お気に入りユーザー管理 ----------
-
-  function loadFavoritesFromStorage() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+      const raw = JSON.parse(localStorage.getItem(key) || '[]');
       return Array.isArray(raw) ? raw : [];
     } catch (e) {
       return [];
     }
   }
 
-  function saveFavoritesToStorage() {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(Array.from(state.favoriteIds)));
+  function saveList(key, list) {
+    localStorage.setItem(key, JSON.stringify(list));
   }
 
-  function toggleFavorite(userId) {
-    if (state.favoriteIds.has(userId)) {
-      state.favoriteIds.delete(userId);
-      state.selectedUserIds.delete(userId);
-    } else {
-      state.favoriteIds.add(userId);
+  function normalizeName(raw) {
+    return raw.trim().replace(/^[@#]/, '');
+  }
+
+  // ---------- ユーザー/チャンネル管理 (共通ロジック) ----------
+
+  function addItem(list, storageKey, inputEl, errorEl, onDone) {
+    errorEl.classList.add('hidden');
+    const name = normalizeName(inputEl.value);
+
+    if (!name) {
+      errorEl.textContent = '名前を入力してください。';
+      errorEl.classList.remove('hidden');
+      return;
     }
-    saveFavoritesToStorage();
-    renderFavoritesManageList();
-  }
-
-  function renderFavoritesManageList() {
-    const keyword = el.favoritesFilter.value.trim().toLowerCase();
-    const filtered = keyword
-      ? state.users.filter((u) => u.name.toLowerCase().includes(keyword))
-      : state.users;
-
-    el.favoritesManageList.innerHTML = '';
-
-    if (filtered.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'user-empty';
-      empty.textContent = '該当するユーザーがいません';
-      el.favoritesManageList.appendChild(empty);
+    if (list.some((item) => item.toLowerCase() === name.toLowerCase())) {
+      errorEl.textContent = 'すでに登録されています。';
+      errorEl.classList.remove('hidden');
       return;
     }
 
-    filtered.forEach((user) => {
-      const isFav = state.favoriteIds.has(user.id);
+    list.push(name);
+    saveList(storageKey, list);
+    inputEl.value = '';
+    onDone();
+  }
 
+  function removeItem(list, storageKey, name, onDone) {
+    const idx = list.indexOf(name);
+    if (idx !== -1) list.splice(idx, 1);
+    saveList(storageKey, list);
+    onDone();
+  }
+
+  function renameItem(list, storageKey, oldName, newNameRaw, onDone) {
+    const newName = normalizeName(newNameRaw);
+    if (!newName) return;
+    const idx = list.indexOf(oldName);
+    if (idx === -1) return;
+    list[idx] = newName;
+    saveList(storageKey, list);
+    onDone();
+  }
+
+  function renderManageList(container, list, storageKey, onChange) {
+    container.innerHTML = '';
+
+    if (list.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'manage-empty';
+      empty.textContent = '登録されていません';
+      container.appendChild(empty);
+      return;
+    }
+
+    list.forEach((name) => {
       const row = document.createElement('div');
-      row.className = 'favorite-row';
+      row.className = 'manage-row';
 
-      const nameWrap = document.createElement('div');
-      nameWrap.className = 'favorite-name';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'manage-name';
+      nameSpan.textContent = name;
 
-      if (user.image) {
-        const img = document.createElement('img');
-        img.src = user.image;
-        img.alt = '';
-        nameWrap.appendChild(img);
-      }
+      const btnEdit = document.createElement('button');
+      btnEdit.type = 'button';
+      btnEdit.textContent = '編集';
 
-      const span = document.createElement('span');
-      span.textContent = user.name;
-      nameWrap.appendChild(span);
+      const btnDelete = document.createElement('button');
+      btnDelete.type = 'button';
+      btnDelete.className = 'btn-delete';
+      btnDelete.textContent = '削除';
+      btnDelete.addEventListener('click', () => {
+        removeItem(list, storageKey, name, onChange);
+      });
 
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn-toggle-fav' + (isFav ? ' is-fav' : '');
-      btn.textContent = isFav ? '削除' : '追加';
-      btn.addEventListener('click', () => toggleFavorite(user.id));
+      btnEdit.addEventListener('click', () => {
+        startEdit(row, name, list, storageKey, onChange);
+      });
 
-      row.appendChild(nameWrap);
-      row.appendChild(btn);
-      el.favoritesManageList.appendChild(row);
+      row.appendChild(nameSpan);
+      row.appendChild(btnEdit);
+      row.appendChild(btnDelete);
+      container.appendChild(row);
     });
   }
 
-  // ---------- 条件入力画面 ----------
+  function startEdit(row, oldName, list, storageKey, onChange) {
+    row.innerHTML = '';
 
-  async function enterConditionScreen() {
-    showScreen('loading');
-    setLoadingMessage('ユーザー一覧を取得しています…');
-    try {
-      await loadUsers();
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'manage-edit-input';
+    input.value = oldName;
+
+    const btnSave = document.createElement('button');
+    btnSave.type = 'button';
+    btnSave.className = 'btn-save';
+    btnSave.textContent = '保存';
+    btnSave.addEventListener('click', () => {
+      renameItem(list, storageKey, oldName, input.value, onChange);
+    });
+
+    const btnCancel = document.createElement('button');
+    btnCancel.type = 'button';
+    btnCancel.textContent = 'キャンセル';
+    btnCancel.addEventListener('click', onChange);
+
+    row.appendChild(input);
+    row.appendChild(btnSave);
+    row.appendChild(btnCancel);
+    input.focus();
+  }
+
+  function renderUserManageList() {
+    renderManageList(el.userManageList, state.users, USERS_KEY, () => {
+      renderUserManageList();
       renderConditionUserList();
-      showScreen('condition');
-    } catch (e) {
-      logout();
-      showLoginError('ユーザー一覧の取得に失敗しました。再度ログインしてください。');
-    }
+    });
   }
 
-  async function loadUsers() {
-    const members = await slackApiPaged('users.list', {}, 'members', 'cursor');
-    state.users = members
-      .filter((u) => !u.deleted && !u.is_bot && u.id !== 'USLACKBOT')
-      .map((u) => ({
-        id: u.id,
-        name: (u.profile && (u.profile.display_name || u.profile.real_name)) || u.name,
-        image: u.profile && (u.profile.image_24 || u.profile.image_original),
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  function renderChannelManageList() {
+    renderManageList(el.channelManageList, state.channels, CHANNELS_KEY, () => {
+      renderChannelManageList();
+      renderConditionChannelList();
+    });
   }
+
+  // ---------- 条件入力画面: チェックリスト ----------
 
   function renderConditionUserList() {
-    const favoriteUsers = state.users.filter((u) => state.favoriteIds.has(u.id));
+    renderConditionCheckList(
+      el.conditionUserList,
+      el.conditionUserEmpty,
+      state.users,
+      state.selectedUsers
+    );
+  }
 
-    if (favoriteUsers.length === 0) {
-      el.userList.innerHTML = '';
-      el.favoritesEmptyHint.classList.remove('hidden');
+  function renderConditionChannelList() {
+    renderConditionCheckList(
+      el.conditionChannelList,
+      el.conditionChannelEmpty,
+      state.channels,
+      state.selectedChannels
+    );
+  }
+
+  function renderConditionCheckList(container, emptyEl, list, selectedSet) {
+    // 削除されたアイテムが選択状態に残らないようにする
+    Array.from(selectedSet).forEach((name) => {
+      if (!list.includes(name)) selectedSet.delete(name);
+    });
+
+    container.innerHTML = '';
+
+    if (list.length === 0) {
+      emptyEl.classList.remove('hidden');
       return;
     }
-    el.favoritesEmptyHint.classList.add('hidden');
+    emptyEl.classList.add('hidden');
 
-    const keyword = el.userFilter.value.trim().toLowerCase();
-    const filtered = keyword
-      ? favoriteUsers.filter((u) => u.name.toLowerCase().includes(keyword))
-      : favoriteUsers;
-
-    el.userList.innerHTML = '';
-
-    if (filtered.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'user-empty';
-      empty.textContent = '該当するユーザーがいません';
-      el.userList.appendChild(empty);
-      return;
-    }
-
-    filtered.forEach((user) => {
+    list.forEach((name) => {
       const item = document.createElement('div');
-      item.className = 'user-item';
+      item.className = 'check-item';
 
       const label = document.createElement('label');
 
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
-      checkbox.value = user.id;
-      checkbox.checked = state.selectedUserIds.has(user.id);
+      checkbox.checked = selectedSet.has(name);
       checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
-          state.selectedUserIds.add(user.id);
+          selectedSet.add(name);
         } else {
-          state.selectedUserIds.delete(user.id);
+          selectedSet.delete(name);
         }
       });
 
-      label.appendChild(checkbox);
-
-      if (user.image) {
-        const img = document.createElement('img');
-        img.src = user.image;
-        img.alt = '';
-        label.appendChild(img);
-      }
-
       const span = document.createElement('span');
-      span.textContent = user.name;
-      label.appendChild(span);
+      span.textContent = name;
 
+      label.appendChild(checkbox);
+      label.appendChild(span);
       item.appendChild(label);
-      el.userList.appendChild(item);
+      container.appendChild(item);
     });
   }
 
-  // ---------- 投稿検索 (Search API) ----------
+  // ---------- 日付プリセット ----------
 
-  async function fetchPosts() {
-    clearConditionError();
+  function applyPreset(days, btn) {
+    const today = new Date();
+    const from = new Date(today);
+    from.setDate(from.getDate() - (days - 1));
 
-    if (state.selectedUserIds.size === 0) {
-      showConditionError('ユーザーを1人以上選択してください。');
-      return;
-    }
-    if (!el.dateFrom.value || !el.dateTo.value) {
-      showConditionError('開始日と終了日を指定してください。');
-      return;
-    }
-    if (el.dateFrom.value > el.dateTo.value) {
-      showConditionError('開始日は終了日より前の日付にしてください。');
-      return;
-    }
+    el.dateFrom.value = formatDateInput(from);
+    el.dateTo.value = formatDateInput(today);
 
-    showScreen('loading');
-    setLoadingMessage('投稿を検索しています…');
-
-    try {
-      // after/beforeは指定日を含まない仕様のため、境界を1日ずらして範囲に含める
-      const afterStr = shiftDate(el.dateFrom.value, -1);
-      const beforeStr = shiftDate(el.dateTo.value, 1);
-
-      const matches = await searchMessages(Array.from(state.selectedUserIds), afterStr, beforeStr);
-
-      state.posts = matches.map((m) => ({
-        userId: m.user,
-        userName: resolveUserName(m.user, m.username),
-        text: m.text || '',
-        ts: m.ts,
-        permalink: m.permalink || '',
-      }));
-
-      applySort();
-      renderPostList();
-      showScreen('list');
-    } catch (e) {
-      showConditionError('投稿の検索に失敗しました。時間を置いて再度お試しください。');
-      showScreen('condition');
-    }
+    el.presetButtons.forEach((b) => b.classList.toggle('active', b === btn));
   }
 
-  async function searchMessages(userIds, afterStr, beforeStr) {
-    // 同じ種類の修飾子(from:)はOR、異なる種類(after:/before:)はANDで評価される
-    const fromClauses = userIds.map((id) => `from:<@${id}>`).join(' ');
-    const query = `${fromClauses} after:${afterStr} before:${beforeStr}`.trim();
-
-    const allMatches = [];
-    const maxPages = 20; // 無料プランはそもそも検索範囲が狭いため安全のための上限
-    let page = 1;
-    let totalPages = 1;
-
-    do {
-      const data = await slackApiGet('search.messages', {
-        query,
-        count: '100',
-        page: String(page),
-        sort: 'timestamp',
-        sort_dir: 'desc',
-      });
-
-      const matches = (data.messages && data.messages.matches) || [];
-      allMatches.push(...matches);
-      totalPages = (data.messages && data.messages.paging && data.messages.paging.pages) || 1;
-      page += 1;
-    } while (page <= totalPages && page <= maxPages);
-
-    return allMatches;
-  }
-
-  function resolveUserName(userId, fallbackName) {
-    const user = state.users.find((u) => u.id === userId);
-    return (user && user.name) || fallbackName || userId;
-  }
-
-  function shiftDate(dateStr, days) {
-    const d = new Date(`${dateStr}T00:00:00`);
-    d.setDate(d.getDate() + days);
+  function formatDateInput(d) {
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
-  // ---------- 一覧表示画面 ----------
+  // ---------- 検索文言生成 ----------
 
-  function onSortClick(key) {
-    if (state.sort.key === key) {
-      state.sort.asc = !state.sort.asc;
-    } else {
-      state.sort.key = key;
-      state.sort.asc = true;
-    }
-    applySort();
-    renderPostList();
-  }
+  function generateQuery() {
+    el.conditionError.classList.add('hidden');
 
-  function applySort() {
-    const { key, asc } = state.sort;
-    state.posts.sort((a, b) => {
-      let diff = 0;
-      if (key === 'user') {
-        diff = a.userName.localeCompare(b.userName, 'ja');
-      } else {
-        diff = Number(a.ts) - Number(b.ts);
-      }
-      return asc ? diff : -diff;
-    });
+    const selectedUsers = Array.from(state.selectedUsers);
+    const selectedChannels = Array.from(state.selectedChannels);
+    const dateFrom = el.dateFrom.value;
+    const dateTo = el.dateTo.value;
+    const sort = document.querySelector('input[name="sort"]:checked').value;
 
-    el.sortButtons.forEach((btn) => {
-      const isActive = btn.dataset.sort === key;
-      btn.classList.toggle('active', isActive);
-      const icon = btn.querySelector('.sort-icon');
-      icon.textContent = isActive ? (asc ? '▲' : '▼') : '';
-    });
-  }
-
-  function renderPostList() {
-    el.resultCount.textContent = String(state.posts.length);
-    el.postList.innerHTML = '';
-
-    if (state.posts.length === 0) {
-      el.emptyMessage.classList.remove('hidden');
+    if (selectedUsers.length === 0 && selectedChannels.length === 0 && !dateFrom && !dateTo) {
+      el.conditionError.textContent = '検索条件を1つ以上指定してください。';
+      el.conditionError.classList.remove('hidden');
       return;
     }
-    el.emptyMessage.classList.add('hidden');
 
-    state.posts.forEach((post) => {
-      const li = document.createElement('li');
-      li.className = 'post-item';
+    const userClause = buildOrClause(selectedUsers, 'from:@');
+    const channelClause = buildOrClause(selectedChannels, 'in:#');
+    const dateClause = buildDateClause(dateFrom, dateTo);
 
-      const meta = document.createElement('div');
-      meta.className = 'post-meta';
+    const blocks = sort === 'date'
+      ? [dateClause, userClause, channelClause]
+      : [userClause, dateClause, channelClause];
 
-      const userSpan = document.createElement('span');
-      userSpan.className = 'post-user';
-      userSpan.textContent = post.userName;
+    const query = blocks.filter(Boolean).join('\n');
 
-      const dateSpan = document.createElement('span');
-      dateSpan.className = 'post-date';
-      dateSpan.textContent = formatDate(post.ts);
-
-      meta.appendChild(userSpan);
-      meta.appendChild(dateSpan);
-
-      const text = document.createElement('p');
-      text.className = 'post-text';
-      text.textContent = post.text;
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn-open';
-      btn.textContent = 'Slackで開く';
-      btn.disabled = !post.permalink;
-      btn.addEventListener('click', () => {
-        if (post.permalink) window.open(post.permalink, '_blank', 'noopener');
-      });
-
-      li.appendChild(meta);
-      li.appendChild(text);
-      li.appendChild(btn);
-      el.postList.appendChild(li);
-    });
+    el.resultQuery.textContent = query;
+    el.copyMessage.classList.add('hidden');
+    showScreen('result');
   }
 
-  function formatDate(ts) {
-    const d = new Date(Number(ts) * 1000);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  function buildOrClause(names, prefix) {
+    if (names.length === 0) return '';
+    const sorted = [...names].sort((a, b) => a.localeCompare(b, 'ja'));
+    const terms = sorted.map((name) => `${prefix}${name}`);
+    return terms.length > 1 ? `( ${terms.join(' OR ')} )` : terms[0];
   }
 
-  // ---------- Slack API ヘルパー ----------
+  function buildDateClause(fromStr, toStr) {
+    const parts = [];
+    if (fromStr) parts.push(`after:${fromStr}`);
+    if (toStr) parts.push(`before:${toStr}`);
+    return parts.join(' ');
+  }
 
-  async function slackApiGet(method, params) {
-    const url = new URL(`${SLACK_API_BASE}/${method}`);
-    Object.entries(params || {}).forEach(([k, v]) => url.searchParams.set(k, v));
-
-    const res = await fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${state.token}` },
-    });
-    const data = await res.json();
-    if (!data.ok) {
-      throw new Error(data.error || 'slack_api_error');
+  async function copyResult() {
+    const text = el.resultQuery.textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      el.copyMessage.classList.remove('hidden');
+    } catch (e) {
+      // クリップボードAPIが使えない環境向けのフォールバック
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        el.copyMessage.classList.remove('hidden');
+      } catch (e2) {
+        // 何もしない(手動選択でコピーしてもらう)
+      }
+      document.body.removeChild(textarea);
     }
-    return data;
-  }
-
-  async function slackApiPaged(method, baseParams, itemsKey, cursorKey) {
-    const all = [];
-    let cursor;
-    do {
-      const params = { ...baseParams, limit: baseParams.limit || '200' };
-      if (cursor) params.cursor = cursor;
-      const data = await slackApiGet(method, params);
-      all.push(...(data[itemsKey] || []));
-      cursor = data.response_metadata && data.response_metadata.next_cursor;
-    } while (cursor);
-    return all;
-  }
-
-  async function fetchJson(url, options) {
-    const res = await fetch(url, options);
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error((data && data.error) || 'request_failed');
-    }
-    return data;
-  }
-
-  function getQueryParam(name) {
-    return new URLSearchParams(window.location.search).get(name);
   }
 
   function registerServiceWorker() {

@@ -1,7 +1,7 @@
 {
-  "name": "Slack投稿ビューア",
-  "short_name": "SlackViewer",
-  "description": "Slackの投稿をユーザー・日付で検索して一覧表示するアプリ",
+  "name": "Slack検索文言ジェネレーター",
+  "short_name": "SlackQueryGen",
+  "description": "ユーザー・チャンネル・日付からSlack検索欄に貼る検索文言を生成するアプリ",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

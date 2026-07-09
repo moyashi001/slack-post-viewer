@@ -1,4 +1,4 @@
-const CACHE_NAME = 'slack-post-viewer-v2';
+const CACHE_NAME = 'slack-post-viewer-v3';
 const APP_SHELL = [
   './',
   'index.html',
@@ -27,8 +27,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Slack APIやサーバーAPIは常にネットワークから取得する(キャッシュしない)
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) {
+  if (url.origin !== self.location.origin) {
     return;
   }
 
