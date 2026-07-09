@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Slack投稿ビューア</title>
+<meta name="theme-color" content="#4A154B">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/icon.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- 1. ログイン画面 -->
+  <section id="screen-login" class="screen">
+    <div class="login-card">
+      <h1>Slack投稿ビューア</h1>
+      <p class="sub">Slackにログインして投稿を検索します</p>
+
+      <button id="btn-slack-login" class="btn btn-slack" type="button">
+        <svg viewBox="0 0 122.8 122.8" width="20" height="20" aria-hidden="true">
+          <path d="M25.8 77.6c0 7.1-5.8 12.9-12.9 12.9S0 84.7 0 77.6s5.8-12.9 12.9-12.9h12.9v12.9z" fill="#e01e5a"/>
+          <path d="M32.3 77.6c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V77.6z" fill="#e01e5a"/>
+          <path d="M45.2 25.8C38.1 25.8 32.3 20 32.3 12.9S38.1 0 45.2 0s12.9 5.8 12.9 12.9v12.9H45.2z" fill="#36c5f0"/>
+          <path d="M45.2 32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H12.9C5.8 58.1 0 52.3 0 45.2s5.8-12.9 12.9-12.9h32.3z" fill="#36c5f0"/>
+          <path d="M97 45.2c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9-5.8 12.9-12.9 12.9H97V45.2z" fill="#2eb67d"/>
+          <path d="M90.5 45.2c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V12.9C64.7 5.8 70.5 0 77.6 0s12.9 5.8 12.9 12.9v32.3z" fill="#2eb67d"/>
+          <path d="M77.6 97c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9-12.9-5.8-12.9-12.9V97h12.9z" fill="#ecb22e"/>
+          <path d="M77.6 90.5c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H77.6z" fill="#ecb22e"/>
+        </svg>
+        Slackでログイン
+      </button>
+
+      <label class="remember">
+        <input type="checkbox" id="chk-remember" checked>
+        ログイン状態を記憶する
+      </label>
+
+      <p id="login-error" class="error-text hidden"></p>
+    </div>
+  </section>
+
+  <!-- 2. お気に入りユーザー管理画面 -->
+  <section id="screen-favorites" class="screen hidden">
+    <header class="app-header">
+      <button id="btn-favorites-back" class="btn-text" type="button">← 戻る</button>
+      <h2>お気に入りユーザー管理</h2>
+    </header>
+
+    <div class="form-group">
+      <label for="favorites-filter">ユーザー選択</label>
+      <input type="text" id="favorites-filter" placeholder="ユーザー名で絞り込み">
+      <div id="favorites-manage-list" class="user-list"></div>
+    </div>
+  </section>
+
+  <!-- 3. 条件入力画面 -->
+  <section id="screen-condition" class="screen hidden">
+    <header class="app-header">
+      <h2>投稿を検索</h2>
+      <div class="header-actions">
+        <button id="btn-manage-favorites" class="btn-text" type="button">お気に入り管理</button>
+        <button id="btn-logout" class="btn-text" type="button">ログアウト</button>
+      </div>
+    </header>
+
+    <div class="form-group">
+      <label for="user-filter">お気に入りユーザー</label>
+      <input type="text" id="user-filter" placeholder="ユーザー名で絞り込み">
+      <div id="user-list" class="user-list"></div>
+      <p id="favorites-empty-hint" class="empty-text hidden">
+        お気に入りユーザーが登録されていません。<br>
+        <button id="btn-goto-favorites" class="btn-text" type="button">お気に入りを管理する</button>
+      </p>
+    </div>
+
+    <div class="form-group date-range">
+      <div class="date-field">
+        <label for="date-from">開始日</label>
+        <input type="date" id="date-from">
+      </div>
+      <div class="date-field">
+        <label for="date-to">終了日</label>
+        <input type="date" id="date-to">
+      </div>
+    </div>
+
+    <button id="btn-fetch" class="btn btn-primary" type="button">投稿を検索する</button>
+    <p id="condition-error" class="error-text hidden"></p>
+  </section>
+
+  <!-- 3. 取得中画面 -->
+  <section id="screen-loading" class="screen hidden">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <p id="loading-message">投稿を取得しています…</p>
+    </div>
+  </section>
+
+  <!-- 4. 一覧表示画面 -->
+  <section id="screen-list" class="screen hidden">
+    <header class="app-header">
+      <button id="btn-back" class="btn-text" type="button">← 戻る</button>
+      <h2>検索結果 (<span id="result-count">0</span>)</h2>
+    </header>
+
+    <div class="sort-bar">
+      <button class="sort-btn" data-sort="user" type="button">ユーザー名 <span class="sort-icon" data-icon="user"></span></button>
+      <button class="sort-btn" data-sort="date" type="button">日付 <span class="sort-icon" data-icon="date"></span></button>
+    </div>
+
+    <ul id="post-list" class="post-list"></ul>
+    <p id="empty-message" class="empty-text hidden">条件に一致する投稿が見つかりませんでした</p>
+  </section>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

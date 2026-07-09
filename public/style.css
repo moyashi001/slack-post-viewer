@@ -1,0 +1,408 @@
+:root {
+  --slack-purple: #4A154B;
+  --slack-purple-dark: #350d36;
+  --accent: #1264a3;
+  --bg: #f7f7f8;
+  --card-bg: #ffffff;
+  --text: #1d1c1d;
+  --text-sub: #616061;
+  --border: #e0e0e2;
+  --error: #d1373f;
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  flex-direction: column;
+}
+
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ログイン画面 */
+#screen-login {
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(160deg, var(--slack-purple), var(--slack-purple-dark));
+}
+
+.login-card {
+  width: 100%;
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+
+.login-card h1 {
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+
+.login-card .sub {
+  color: var(--text-sub);
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-slack {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-slack:active {
+  background: #f4f4f4;
+}
+
+.btn-primary {
+  background: var(--slack-purple);
+  color: #fff;
+  margin-top: 16px;
+}
+
+.btn-primary:active {
+  background: var(--slack-purple-dark);
+}
+
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 14px;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.error-text {
+  color: var(--error);
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+.empty-text {
+  color: var(--text-sub);
+  font-size: 14px;
+  text-align: center;
+  margin-top: 32px;
+}
+
+/* 共通ヘッダー */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.app-header h2 {
+  font-size: 18px;
+  margin: 0;
+}
+
+/* 条件入力画面 */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin-bottom: 6px;
+}
+
+#user-filter,
+#favorites-filter {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.user-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+}
+
+.user-item:last-child {
+  border-bottom: none;
+}
+
+.user-item img {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.user-item label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.user-empty {
+  padding: 16px 12px;
+  color: var(--text-sub);
+  font-size: 14px;
+  text-align: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.favorite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+}
+
+.favorite-row:last-child {
+  border-bottom: none;
+}
+
+.favorite-row .favorite-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.favorite-row .favorite-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favorite-row img {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.btn-toggle-fav {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--slack-purple);
+  background: #fff;
+  color: var(--slack-purple);
+  cursor: pointer;
+}
+
+.btn-toggle-fav.is-fav {
+  background: var(--slack-purple);
+  color: #fff;
+}
+
+#favorites-empty-hint {
+  text-align: center;
+  line-height: 1.6;
+}
+
+.date-range {
+  display: flex;
+  gap: 12px;
+}
+
+.date-field {
+  flex: 1;
+}
+
+.date-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+/* 取得中画面 */
+#screen-loading {
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-box {
+  text-align: center;
+  color: var(--text-sub);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 16px;
+  border: 4px solid var(--border);
+  border-top-color: var(--slack-purple);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 一覧表示画面 */
+.sort-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sort-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.sort-btn.active {
+  border-color: var(--slack-purple);
+  color: var(--slack-purple);
+  font-weight: 600;
+}
+
+.post-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.post-item {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.post-item .post-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.post-item .post-user {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.post-item .post-date {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.post-item .post-text {
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0 0 10px;
+}
+
+.post-item .btn-open {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.post-item .btn-open:active {
+  background: rgba(18, 100, 163, 0.08);
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Slack投稿ビューア",
+  "short_name": "SlackViewer",
+  "description": "Slackの投稿をユーザー・日付で検索して一覧表示するアプリ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f7f8",
+  "theme_color": "#4A154B",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
