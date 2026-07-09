@@ -1,6 +1,6 @@
 {
-  "name": "Slack検索文言ジェネレーター",
-  "short_name": "SlackQueryGen",
+  "name": "Slack検索文言",
+  "short_name": "Slack検索文言",
   "description": "ユーザー・チャンネル・日付からSlack検索欄に貼る検索文言を生成するアプリ",
   "start_url": "./",
   "scope": "./",

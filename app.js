@@ -49,6 +49,7 @@
     el.formAddUser = document.getElementById('form-add-user');
     el.inputAddUser = document.getElementById('input-add-user');
     el.inputAddUserId = document.getElementById('input-add-user-id');
+    el.inputAddUserEmail = document.getElementById('input-add-user-email');
     el.userFormError = document.getElementById('user-form-error');
 
     el.channelManageList = document.getElementById('channel-manage-list');
@@ -69,6 +70,17 @@
     el.resultQuery = document.getElementById('result-query');
     el.btnCopy = document.getElementById('btn-copy');
     el.copyMessage = document.getElementById('copy-message');
+
+    el.btnExport = document.getElementById('btn-export');
+    el.btnImport = document.getElementById('btn-import');
+    el.exportBox = document.getElementById('export-box');
+    el.exportText = document.getElementById('export-text');
+    el.btnCopyExport = document.getElementById('btn-copy-export');
+    el.exportMessage = document.getElementById('export-message');
+    el.importBox = document.getElementById('import-box');
+    el.importText = document.getElementById('import-text');
+    el.btnDoImport = document.getElementById('btn-do-import');
+    el.importMessage = document.getElementById('import-message');
   }
 
   function bindEvents() {
@@ -105,6 +117,11 @@
 
     el.btnGenerate.addEventListener('click', generateQuery);
     el.btnCopy.addEventListener('click', copyResult);
+
+    el.btnExport.addEventListener('click', openExportBox);
+    el.btnImport.addEventListener('click', openImportBox);
+    el.btnCopyExport.addEventListener('click', copyExportText);
+    el.btnDoImport.addEventListener('click', doImport);
   }
 
   // ---------- 画面制御 ----------
@@ -139,12 +156,18 @@
     return raw.trim().replace(/^<@/, '').replace(/>$/, '').replace(/^@/, '');
   }
 
-  // ---------- ユーザー管理 (name + 任意のSlackメンバーID) ----------
+  function normalizeEmail(raw) {
+    return raw.trim();
+  }
+
+  // ---------- ユーザー管理 (name + 任意のSlackメンバーID + 任意のメールアドレス) ----------
 
   function loadUsers() {
     const raw = loadList(USERS_KEY);
     return raw.map((item) => (
-      typeof item === 'string' ? { name: item, id: '' } : { name: item.name, id: item.id || '' }
+      typeof item === 'string'
+        ? { name: item, id: '', email: '' }
+        : { name: item.name, id: item.id || '', email: item.email || '' }
     ));
   }
 
@@ -156,6 +179,7 @@
     el.userFormError.classList.add('hidden');
     const name = normalizeName(el.inputAddUser.value);
     const id = normalizeMemberId(el.inputAddUserId.value);
+    const email = normalizeEmail(el.inputAddUserEmail.value);
 
     if (!name) {
       el.userFormError.textContent = '名前を入力してください。';
@@ -168,10 +192,11 @@
       return;
     }
 
-    state.users.push({ name, id });
+    state.users.push({ name, id, email });
     saveUsers();
     el.inputAddUser.value = '';
     el.inputAddUserId.value = '';
+    el.inputAddUserEmail.value = '';
     onDone();
   }
 
@@ -182,14 +207,25 @@
     onDone();
   }
 
-  function renameUser(oldName, newNameRaw, newIdRaw, onDone) {
+  function renameUser(oldName, newNameRaw, newIdRaw, newEmailRaw, onDone) {
     const newName = normalizeName(newNameRaw);
     if (!newName) return;
     const idx = state.users.findIndex((u) => u.name === oldName);
     if (idx === -1) return;
-    state.users[idx] = { name: newName, id: normalizeMemberId(newIdRaw || '') };
+    state.users[idx] = {
+      name: newName,
+      id: normalizeMemberId(newIdRaw || ''),
+      email: normalizeEmail(newEmailRaw || ''),
+    };
     saveUsers();
     onDone();
+  }
+
+  function userManageLabel(user) {
+    const extras = [];
+    if (user.id) extras.push(`ID: ${user.id}`);
+    if (user.email) extras.push(`Mail: ${user.email}`);
+    return extras.length ? `${user.name} (${extras.join(', ')})` : user.name;
   }
 
   function renderUserManageList() {
@@ -215,7 +251,7 @@
 
       const nameWrap = document.createElement('span');
       nameWrap.className = 'manage-name';
-      nameWrap.textContent = user.id ? `${user.name} (${user.id})` : user.name;
+      nameWrap.textContent = userManageLabel(user);
 
       const btnEdit = document.createElement('button');
       btnEdit.type = 'button';
@@ -255,12 +291,18 @@
     idInput.value = user.id;
     idInput.placeholder = '任意: SlackメンバーID';
 
+    const emailInput = document.createElement('input');
+    emailInput.type = 'email';
+    emailInput.className = 'manage-edit-input';
+    emailInput.value = user.email;
+    emailInput.placeholder = '任意: メールアドレス';
+
     const btnSave = document.createElement('button');
     btnSave.type = 'button';
     btnSave.className = 'btn-save';
     btnSave.textContent = '保存';
     btnSave.addEventListener('click', () => {
-      renameUser(user.name, nameInput.value, idInput.value, onChange);
+      renameUser(user.name, nameInput.value, idInput.value, emailInput.value, onChange);
     });
 
     const btnCancel = document.createElement('button');
@@ -270,6 +312,7 @@
 
     row.appendChild(nameInput);
     row.appendChild(idInput);
+    row.appendChild(emailInput);
     row.appendChild(btnSave);
     row.appendChild(btnCancel);
     nameInput.focus();
@@ -515,9 +558,12 @@
     if (selectedNames.length === 0) return '';
     const selected = state.users.filter((u) => selectedNames.includes(u.name));
     const sorted = selected.slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-    // メンバーIDが登録されていればSlackのメンション形式(from:<@ID>)を使い、
-    // 貼り付けただけでもユーザーとして認識されやすくする
-    const terms = sorted.map((u) => (u.id ? `from:<@${u.id}>` : `from:@${u.name}`));
+    // 優先度: メンバーID > メールアドレス > ユーザー名(@なし)
+    const terms = sorted.map((u) => {
+      if (u.id) return `from:<@${u.id}>`;
+      if (u.email) return `from:${u.email}`;
+      return `from:${u.name}`;
+    });
     return terms.length > 1 ? `( ${terms.join(' OR ')} )` : terms[0];
   }
 
@@ -550,6 +596,82 @@
       }
       document.body.removeChild(textarea);
     }
+  }
+
+  // ---------- エクスポート/インポート (端末間の手動同期) ----------
+
+  function openExportBox() {
+    el.importBox.classList.add('hidden');
+    el.exportMessage.classList.add('hidden');
+
+    const payload = { users: state.users, channels: state.channels };
+    el.exportText.value = JSON.stringify(payload);
+    el.exportBox.classList.remove('hidden');
+    el.exportText.focus();
+    el.exportText.select();
+  }
+
+  function openImportBox() {
+    el.exportBox.classList.add('hidden');
+    el.importMessage.classList.add('hidden');
+    el.importText.value = '';
+    el.importBox.classList.remove('hidden');
+    el.importText.focus();
+  }
+
+  async function copyExportText() {
+    const text = el.exportText.value;
+    try {
+      await navigator.clipboard.writeText(text);
+      el.exportMessage.classList.remove('hidden');
+    } catch (e) {
+      el.exportText.focus();
+      el.exportText.select();
+      try {
+        document.execCommand('copy');
+        el.exportMessage.classList.remove('hidden');
+      } catch (e2) {
+        // 何もしない(手動選択でコピーしてもらう)
+      }
+    }
+  }
+
+  function doImport() {
+    el.importMessage.classList.add('hidden');
+
+    let data;
+    try {
+      data = JSON.parse(el.importText.value);
+    } catch (e) {
+      el.importMessage.textContent = 'テキストの形式が正しくありません。';
+      el.importMessage.classList.remove('hidden');
+      return;
+    }
+
+    if (!data || !Array.isArray(data.users) || !Array.isArray(data.channels)) {
+      el.importMessage.textContent = 'テキストの形式が正しくありません。';
+      el.importMessage.classList.remove('hidden');
+      return;
+    }
+
+    state.users = data.users.map((item) => (
+      typeof item === 'string'
+        ? { name: item, id: '', email: '' }
+        : { name: String(item.name || ''), id: String(item.id || ''), email: String(item.email || '') }
+    )).filter((u) => u.name);
+    state.channels = data.channels.map((item) => String(item)).filter(Boolean);
+    state.selectedUsers.clear();
+    state.selectedChannels.clear();
+
+    saveUsers();
+    saveList(CHANNELS_KEY, state.channels);
+
+    renderUserManageList();
+    renderChannelManageList();
+    renderConditionUserList();
+    renderConditionChannelList();
+
+    el.importBox.classList.add('hidden');
   }
 
   function registerServiceWorker() {

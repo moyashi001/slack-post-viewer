@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>Slack検索文言ジェネレーター</title>
+<title>Slack検索文言</title>
 <meta name="theme-color" content="#4A154B">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg">
@@ -16,7 +16,7 @@
   <!-- 1. ホーム画面 -->
   <section id="screen-home" class="screen">
     <div class="home-hero">
-      <h1>Slack検索文言<br>ジェネレーター</h1>
+      <h1>Slack検索文言</h1>
       <p class="sub">条件を選ぶだけでSlack検索欄に貼る文言を作成します</p>
     </div>
     <nav class="home-nav">
@@ -24,6 +24,26 @@
       <button id="btn-goto-users" class="btn btn-slack" type="button">ユーザー管理</button>
       <button id="btn-goto-channels" class="btn btn-slack" type="button">チャンネル管理</button>
     </nav>
+
+    <div class="data-io">
+      <div class="data-io-links">
+        <button id="btn-export" class="btn-text btn-text-light" type="button">他の端末に引き継ぐ (エクスポート)</button>
+        <button id="btn-import" class="btn-text btn-text-light" type="button">他の端末から取り込む (インポート)</button>
+      </div>
+
+      <div id="export-box" class="data-io-box hidden">
+        <textarea id="export-text" class="data-io-textarea" readonly></textarea>
+        <button id="btn-copy-export" class="btn btn-slack" type="button">コピーする</button>
+        <p id="export-message" class="copy-message hidden">コピーしました</p>
+      </div>
+
+      <div id="import-box" class="data-io-box hidden">
+        <textarea id="import-text" class="data-io-textarea" placeholder="エクスポートしたテキストをここに貼り付け"></textarea>
+        <button id="btn-do-import" class="btn btn-slack" type="button">読み込む</button>
+        <p class="hint-text">読み込むと現在登録されているユーザー・チャンネルは上書きされます。</p>
+        <p id="import-message" class="error-text hidden"></p>
+      </div>
+    </div>
   </section>
 
   <!-- 2. ユーザー管理画面 -->
@@ -36,11 +56,12 @@
     <div id="user-manage-list" class="manage-list"></div>
 
     <form id="form-add-user" class="add-form add-form-user">
-      <input type="text" id="input-add-user" placeholder="ユーザー名 (例: tanaka)" autocomplete="off">
+      <input type="text" id="input-add-user" placeholder="ユーザー名 (例: 田中 太郎)" autocomplete="off">
       <input type="text" id="input-add-user-id" placeholder="任意: SlackメンバーID (例: U0123ABCD)" autocomplete="off">
+      <input type="email" id="input-add-user-email" placeholder="任意: メールアドレス" autocomplete="off">
       <button type="submit" class="btn btn-primary btn-add">追加</button>
     </form>
-    <p class="hint-text">メンバーIDを入力すると、貼り付け時にSlackがユーザーとして認識しやすくなります。</p>
+    <p class="hint-text">検索時はメンバーID＞メールアドレス＞ユーザー名の順で使われます。メンバーIDかメールアドレスがあると、貼り付け時にSlackがユーザーとして認識しやすくなります。</p>
     <p id="user-form-error" class="error-text hidden"></p>
   </section>
 
