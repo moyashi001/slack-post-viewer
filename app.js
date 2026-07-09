@@ -11,8 +11,7 @@
     channels: [],   // string[]
     selectedUsers: new Set(),
     selectedChannels: new Set(),
-    sort: 'user',   // 'user' | 'date'
-    presets: [],    // { userNames: string[], channelNames: string[], dateFrom: string, dateTo: string, sort: string }[]
+    presets: [],    // { userNames: string[], channelNames: string[], dateFrom: string, dateTo: string }[]
     pendingPresetSnapshot: null,
   };
 
@@ -640,7 +639,6 @@
         channelNames: Array.isArray(p.channelNames) ? p.channelNames : [],
         dateFrom: p.dateFrom || '',
         dateTo: p.dateTo || '',
-        sort: p.sort === 'date' ? 'date' : 'user',
       }))
       .slice(0, MAX_PRESETS);
   }
@@ -655,7 +653,6 @@
       channelNames: Array.from(state.selectedChannels),
       dateFrom: el.dateFrom.value,
       dateTo: el.dateTo.value,
-      sort: document.querySelector('input[name="sort"]:checked').value,
     };
   }
 
@@ -774,9 +771,6 @@
     el.dateFrom.value = preset.dateFrom;
     el.dateTo.value = preset.dateTo;
 
-    const sortRadio = document.querySelector(`input[name="sort"][value="${preset.sort}"]`);
-    if (sortRadio) sortRadio.checked = true;
-
     renderConditionUserList();
     renderConditionChannelList();
     showPresetMessage(`プリセット${index + 1}を適用しました`);
@@ -792,8 +786,6 @@
     state.selectedChannels.clear();
     el.dateFrom.value = '';
     el.dateTo.value = '';
-    const defaultSort = document.querySelector('input[name="sort"][value="user"]');
-    if (defaultSort) defaultSort.checked = true;
     el.presetButtons.forEach((b) => b.classList.remove('active'));
 
     el.conditionError.classList.add('hidden');
@@ -813,7 +805,6 @@
     const selectedChannels = Array.from(state.selectedChannels);
     const dateFrom = el.dateFrom.value;
     const dateTo = el.dateTo.value;
-    const sort = document.querySelector('input[name="sort"]:checked').value;
 
     if (selectedUsers.length === 0 && selectedChannels.length === 0 && !dateFrom && !dateTo) {
       el.conditionError.textContent = '検索条件を1つ以上指定してください。';
@@ -836,9 +827,7 @@
     const channelClause = buildOrClause(selectedChannels, 'in:#');
     const dateClause = buildDateClause(dateFrom, dateTo);
 
-    const blocks = sort === 'date'
-      ? [dateClause, userClause, channelClause]
-      : [userClause, dateClause, channelClause];
+    const blocks = [userClause, dateClause, channelClause];
 
     // Slackの検索欄は改行を含む貼り付けを正しく解釈できないことがあるため、
     // 見た目の区切りではなく半角スペースのみで1行に連結する
@@ -975,7 +964,6 @@
           channelNames: Array.isArray(p.channelNames) ? p.channelNames : [],
           dateFrom: p.dateFrom || '',
           dateTo: p.dateTo || '',
-          sort: p.sort === 'date' ? 'date' : 'user',
         })).slice(0, MAX_PRESETS)
       : [];
     state.selectedUsers.clear();

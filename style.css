@@ -469,20 +469,6 @@ body {
   font-size: 15px;
 }
 
-.sort-choice {
-  display: flex;
-  gap: 20px;
-}
-
-.radio-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  margin: 0;
-  font-weight: 400;
-}
-
 /* 条件プリセット */
 .preset-condition-header {
   display: flex;
