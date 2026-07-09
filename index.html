@@ -40,7 +40,7 @@
       <div id="import-box" class="data-io-box hidden">
         <textarea id="import-text" class="data-io-textarea" placeholder="エクスポートしたテキストをここに貼り付け"></textarea>
         <button id="btn-do-import" class="btn btn-slack" type="button">読み込む</button>
-        <p class="hint-text">読み込むと現在登録されているユーザー・チャンネルは上書きされます。</p>
+        <p class="hint-text">読み込むと現在登録されているユーザー・チャンネル・保存済み条件は上書きされます。</p>
         <p id="import-message" class="error-text hidden"></p>
       </div>
     </div>
@@ -57,11 +57,10 @@
 
     <form id="form-add-user" class="add-form add-form-user">
       <input type="text" id="input-add-user" placeholder="ユーザー名 (例: 田中 太郎)" autocomplete="off">
-      <input type="text" id="input-add-user-id" placeholder="任意: SlackメンバーID (例: U0123ABCD)" autocomplete="off">
-      <input type="email" id="input-add-user-email" placeholder="任意: メールアドレス" autocomplete="off">
+      <input type="text" id="input-add-user-id" placeholder="SlackメンバーID (例: U0123ABCD)" autocomplete="off">
       <button type="submit" class="btn btn-primary btn-add">追加</button>
     </form>
-    <p class="hint-text">検索時はメンバーID＞メールアドレス＞ユーザー名の順で使われます。メンバーIDかメールアドレスがあると、貼り付け時にSlackがユーザーとして認識しやすくなります。</p>
+    <p class="hint-text">検索はSlackメンバーIDのみで行うため、メンバーIDの登録は必須です。</p>
     <p id="user-form-error" class="error-text hidden"></p>
   </section>
 
@@ -107,12 +106,14 @@
     <div class="form-group">
       <label>日付範囲</label>
       <div class="preset-bar">
-        <button class="preset-btn" data-days="1" type="button">1日</button>
-        <button class="preset-btn" data-days="3" type="button">3日</button>
-        <button class="preset-btn" data-days="5" type="button">5日</button>
-        <button class="preset-btn" data-days="10" type="button">10日</button>
-        <button class="preset-btn" data-days="20" type="button">20日</button>
-        <button class="preset-btn" data-days="30" type="button">30日</button>
+        <button class="preset-btn" data-preset="today" type="button">今日</button>
+        <button class="preset-btn" data-preset="yesterday" type="button">昨日</button>
+        <button class="preset-btn" data-preset="dayBeforeYesterday" type="button">一昨日</button>
+        <button class="preset-btn" data-preset="thisWeek" type="button">今週</button>
+        <button class="preset-btn" data-preset="lastWeek" type="button">先週</button>
+        <button class="preset-btn" data-preset="thisMonth" type="button">今月</button>
+        <button class="preset-btn" data-preset="twoMonthsAgo" type="button">2か月前</button>
+        <button class="preset-btn" data-preset="threeMonthsAgo" type="button">3か月前</button>
       </div>
       <div class="date-range">
         <div class="date-field">
@@ -140,6 +141,21 @@
       </div>
     </div>
 
+    <div class="form-group">
+      <div class="preset-condition-header">
+        <label>保存済み条件</label>
+        <button id="btn-save-preset" class="btn-text" type="button">この条件を保存</button>
+      </div>
+      <div id="condition-preset-list" class="preset-condition-list"></div>
+      <p id="preset-message" class="copy-message hidden"></p>
+
+      <div id="preset-overwrite-chooser" class="preset-overwrite-chooser hidden">
+        <p class="hint-text">すでに3件保存されています。上書きする保存先を選んでください。</p>
+        <div id="preset-overwrite-list"></div>
+        <button id="btn-cancel-overwrite" class="btn-text" type="button">キャンセル</button>
+      </div>
+    </div>
+
     <button id="btn-generate" class="btn btn-primary" type="button">検索文言を生成する</button>
     <p id="condition-error" class="error-text hidden"></p>
   </section>
@@ -154,7 +170,8 @@
     <pre id="result-query" class="result-query"></pre>
     <button id="btn-copy" class="btn btn-primary" type="button">コピーする</button>
     <p id="copy-message" class="copy-message hidden">コピーしました</p>
-    <p class="hint-text">Slackの検索欄に貼り付けるだけで検索できます。</p>
+    <button id="btn-open-slack" class="btn btn-slack" type="button">Slackを開く</button>
+    <p class="hint-text">コピー後、Slackの検索欄に貼り付けるだけで検索できます。</p>
     <button class="btn-text btn-home" data-back="home" type="button">ホームに戻る</button>
   </section>
 

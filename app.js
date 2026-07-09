@@ -3,6 +3,8 @@
 
   const USERS_KEY = 'slack_query_users';
   const CHANNELS_KEY = 'slack_query_channels';
+  const PRESETS_KEY = 'slack_query_condition_presets';
+  const MAX_PRESETS = 3;
 
   const state = {
     users: [],      // { name: string, id: string }[]
@@ -10,6 +12,8 @@
     selectedUsers: new Set(),
     selectedChannels: new Set(),
     sort: 'user',   // 'user' | 'date'
+    presets: [],    // { userNames: string[], channelNames: string[], dateFrom: string, dateTo: string, sort: string }[]
+    pendingPresetSnapshot: null,
   };
 
   const el = {};
@@ -23,11 +27,13 @@
 
     state.users = loadUsers();
     state.channels = loadList(CHANNELS_KEY);
+    state.presets = loadPresets();
 
     renderUserManageList();
     renderChannelManageList();
     renderConditionUserList();
     renderConditionChannelList();
+    renderPresetList();
 
     showScreen('home');
   }
@@ -49,7 +55,6 @@
     el.formAddUser = document.getElementById('form-add-user');
     el.inputAddUser = document.getElementById('input-add-user');
     el.inputAddUserId = document.getElementById('input-add-user-id');
-    el.inputAddUserEmail = document.getElementById('input-add-user-email');
     el.userFormError = document.getElementById('user-form-error');
 
     el.channelManageList = document.getElementById('channel-manage-list');
@@ -67,9 +72,17 @@
     el.btnGenerate = document.getElementById('btn-generate');
     el.conditionError = document.getElementById('condition-error');
 
+    el.btnSavePreset = document.getElementById('btn-save-preset');
+    el.conditionPresetList = document.getElementById('condition-preset-list');
+    el.presetMessage = document.getElementById('preset-message');
+    el.presetOverwriteChooser = document.getElementById('preset-overwrite-chooser');
+    el.presetOverwriteList = document.getElementById('preset-overwrite-list');
+    el.btnCancelOverwrite = document.getElementById('btn-cancel-overwrite');
+
     el.resultQuery = document.getElementById('result-query');
     el.btnCopy = document.getElementById('btn-copy');
     el.copyMessage = document.getElementById('copy-message');
+    el.btnOpenSlack = document.getElementById('btn-open-slack');
 
     el.btnExport = document.getElementById('btn-export');
     el.btnImport = document.getElementById('btn-import');
@@ -112,11 +125,15 @@
     });
 
     el.presetButtons.forEach((btn) => {
-      btn.addEventListener('click', () => applyPreset(Number(btn.dataset.days), btn));
+      btn.addEventListener('click', () => applyPreset(btn.dataset.preset, btn));
     });
 
     el.btnGenerate.addEventListener('click', generateQuery);
     el.btnCopy.addEventListener('click', copyResult);
+    el.btnOpenSlack.addEventListener('click', openSlack);
+
+    el.btnSavePreset.addEventListener('click', onSavePresetClick);
+    el.btnCancelOverwrite.addEventListener('click', hideOverwriteChooser);
 
     el.btnExport.addEventListener('click', openExportBox);
     el.btnImport.addEventListener('click', openImportBox);
@@ -156,18 +173,12 @@
     return raw.trim().replace(/^<@/, '').replace(/>$/, '').replace(/^@/, '');
   }
 
-  function normalizeEmail(raw) {
-    return raw.trim();
-  }
-
-  // ---------- ユーザー管理 (name + 任意のSlackメンバーID + 任意のメールアドレス) ----------
+  // ---------- ユーザー管理 (name + SlackメンバーID) ----------
 
   function loadUsers() {
     const raw = loadList(USERS_KEY);
     return raw.map((item) => (
-      typeof item === 'string'
-        ? { name: item, id: '', email: '' }
-        : { name: item.name, id: item.id || '', email: item.email || '' }
+      typeof item === 'string' ? { name: item, id: '' } : { name: item.name, id: item.id || '' }
     ));
   }
 
@@ -179,10 +190,14 @@
     el.userFormError.classList.add('hidden');
     const name = normalizeName(el.inputAddUser.value);
     const id = normalizeMemberId(el.inputAddUserId.value);
-    const email = normalizeEmail(el.inputAddUserEmail.value);
 
     if (!name) {
       el.userFormError.textContent = '名前を入力してください。';
+      el.userFormError.classList.remove('hidden');
+      return;
+    }
+    if (!id) {
+      el.userFormError.textContent = 'メンバーIDが設定されていません。';
       el.userFormError.classList.remove('hidden');
       return;
     }
@@ -192,11 +207,10 @@
       return;
     }
 
-    state.users.push({ name, id, email });
+    state.users.push({ name, id });
     saveUsers();
     el.inputAddUser.value = '';
     el.inputAddUserId.value = '';
-    el.inputAddUserEmail.value = '';
     onDone();
   }
 
@@ -207,25 +221,31 @@
     onDone();
   }
 
-  function renameUser(oldName, newNameRaw, newIdRaw, newEmailRaw, onDone) {
+  function renameUser(oldName, newNameRaw, newIdRaw, onDone) {
     const newName = normalizeName(newNameRaw);
-    if (!newName) return;
+    const newId = normalizeMemberId(newIdRaw || '');
+
+    if (!newName) {
+      el.userFormError.textContent = '名前を入力してください。';
+      el.userFormError.classList.remove('hidden');
+      return;
+    }
+    if (!newId) {
+      el.userFormError.textContent = 'メンバーIDが設定されていません。';
+      el.userFormError.classList.remove('hidden');
+      return;
+    }
+
     const idx = state.users.findIndex((u) => u.name === oldName);
     if (idx === -1) return;
-    state.users[idx] = {
-      name: newName,
-      id: normalizeMemberId(newIdRaw || ''),
-      email: normalizeEmail(newEmailRaw || ''),
-    };
+    state.users[idx] = { name: newName, id: newId };
     saveUsers();
+    el.userFormError.classList.add('hidden');
     onDone();
   }
 
   function userManageLabel(user) {
-    const extras = [];
-    if (user.id) extras.push(`ID: ${user.id}`);
-    if (user.email) extras.push(`Mail: ${user.email}`);
-    return extras.length ? `${user.name} (${extras.join(', ')})` : user.name;
+    return user.id ? `${user.name} (ID: ${user.id})` : `${user.name} (ID未登録)`;
   }
 
   function renderUserManageList() {
@@ -289,20 +309,14 @@
     idInput.type = 'text';
     idInput.className = 'manage-edit-input';
     idInput.value = user.id;
-    idInput.placeholder = '任意: SlackメンバーID';
-
-    const emailInput = document.createElement('input');
-    emailInput.type = 'email';
-    emailInput.className = 'manage-edit-input';
-    emailInput.value = user.email;
-    emailInput.placeholder = '任意: メールアドレス';
+    idInput.placeholder = 'SlackメンバーID';
 
     const btnSave = document.createElement('button');
     btnSave.type = 'button';
     btnSave.className = 'btn-save';
     btnSave.textContent = '保存';
     btnSave.addEventListener('click', () => {
-      renameUser(user.name, nameInput.value, idInput.value, emailInput.value, onChange);
+      renameUser(user.name, nameInput.value, idInput.value, onChange);
     });
 
     const btnCancel = document.createElement('button');
@@ -312,7 +326,6 @@
 
     row.appendChild(nameInput);
     row.appendChild(idInput);
-    row.appendChild(emailInput);
     row.appendChild(btnSave);
     row.appendChild(btnCancel);
     nameInput.focus();
@@ -440,7 +453,7 @@
     renderConditionCheckList(
       el.conditionUserList,
       el.conditionUserEmpty,
-      state.users.map((u) => u.name),
+      state.users.map((u) => ({ value: u.name, label: u.id ? u.name : `${u.name} (ID未登録)` })),
       state.selectedUsers
     );
   }
@@ -449,26 +462,27 @@
     renderConditionCheckList(
       el.conditionChannelList,
       el.conditionChannelEmpty,
-      state.channels,
+      state.channels.map((c) => ({ value: c, label: c })),
       state.selectedChannels
     );
   }
 
-  function renderConditionCheckList(container, emptyEl, list, selectedSet) {
+  function renderConditionCheckList(container, emptyEl, items, selectedSet) {
     // 削除されたアイテムが選択状態に残らないようにする
-    Array.from(selectedSet).forEach((name) => {
-      if (!list.includes(name)) selectedSet.delete(name);
+    const values = items.map((item) => item.value);
+    Array.from(selectedSet).forEach((value) => {
+      if (!values.includes(value)) selectedSet.delete(value);
     });
 
     container.innerHTML = '';
 
-    if (list.length === 0) {
+    if (items.length === 0) {
       emptyEl.classList.remove('hidden');
       return;
     }
     emptyEl.classList.add('hidden');
 
-    list.forEach((name) => {
+    items.forEach(({ value, label: itemLabel }) => {
       const item = document.createElement('div');
       item.className = 'check-item';
 
@@ -476,17 +490,17 @@
 
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
-      checkbox.checked = selectedSet.has(name);
+      checkbox.checked = selectedSet.has(value);
       checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
-          selectedSet.add(name);
+          selectedSet.add(value);
         } else {
-          selectedSet.delete(name);
+          selectedSet.delete(value);
         }
       });
 
       const span = document.createElement('span');
-      span.textContent = name;
+      span.textContent = itemLabel;
 
       label.appendChild(checkbox);
       label.appendChild(span);
@@ -497,13 +511,70 @@
 
   // ---------- 日付プリセット ----------
 
-  function applyPreset(days, btn) {
+  function getWeekStart(date) {
+    const d = new Date(date);
+    const day = d.getDay(); // 0=日, 1=月, ... 6=土
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diffToMonday);
+    return d;
+  }
+
+  function applyPreset(preset, btn) {
     const today = new Date();
-    const from = new Date(today);
-    from.setDate(from.getDate() - (days - 1));
+    let from;
+    let to;
+
+    switch (preset) {
+      case 'today':
+        from = new Date(today);
+        to = new Date(today);
+        break;
+      case 'yesterday': {
+        const d = new Date(today);
+        d.setDate(d.getDate() - 1);
+        from = new Date(d);
+        to = new Date(d);
+        break;
+      }
+      case 'dayBeforeYesterday': {
+        const d = new Date(today);
+        d.setDate(d.getDate() - 2);
+        from = new Date(d);
+        to = new Date(d);
+        break;
+      }
+      case 'thisWeek':
+        // 今週はまだ終わっていないため、終了日は今日にする
+        from = getWeekStart(today);
+        to = new Date(today);
+        break;
+      case 'lastWeek': {
+        const thisWeekStart = getWeekStart(today);
+        to = new Date(thisWeekStart);
+        to.setDate(to.getDate() - 1);
+        from = new Date(thisWeekStart);
+        from.setDate(from.getDate() - 7);
+        break;
+      }
+      case 'thisMonth':
+        // 今月もまだ終わっていないため、終了日は今日にする
+        from = new Date(today.getFullYear(), today.getMonth(), 1);
+        to = new Date(today);
+        break;
+      case 'twoMonthsAgo':
+        from = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        to = new Date(today.getFullYear(), today.getMonth() - 1, 0);
+        break;
+      case 'threeMonthsAgo':
+        from = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        to = new Date(today.getFullYear(), today.getMonth() - 2, 0);
+        break;
+      default:
+        return;
+    }
 
     el.dateFrom.value = formatDateInput(from);
-    el.dateTo.value = formatDateInput(today);
+    el.dateTo.value = formatDateInput(to);
 
     el.presetButtons.forEach((b) => b.classList.toggle('active', b === btn));
   }
@@ -511,6 +582,164 @@
   function formatDateInput(d) {
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  // ---------- 検索条件プリセット (最大3件保存) ----------
+
+  function loadPresets() {
+    const raw = loadList(PRESETS_KEY);
+    return raw
+      .filter((p) => p && typeof p === 'object')
+      .map((p) => ({
+        userNames: Array.isArray(p.userNames) ? p.userNames : [],
+        channelNames: Array.isArray(p.channelNames) ? p.channelNames : [],
+        dateFrom: p.dateFrom || '',
+        dateTo: p.dateTo || '',
+        sort: p.sort === 'date' ? 'date' : 'user',
+      }))
+      .slice(0, MAX_PRESETS);
+  }
+
+  function savePresets() {
+    saveList(PRESETS_KEY, state.presets);
+  }
+
+  function buildPresetSnapshot() {
+    return {
+      userNames: Array.from(state.selectedUsers),
+      channelNames: Array.from(state.selectedChannels),
+      dateFrom: el.dateFrom.value,
+      dateTo: el.dateTo.value,
+      sort: document.querySelector('input[name="sort"]:checked').value,
+    };
+  }
+
+  function presetSummary(preset) {
+    const parts = [];
+    parts.push(`ユーザー${preset.userNames.length}件`);
+    parts.push(`チャンネル${preset.channelNames.length}件`);
+    if (preset.dateFrom || preset.dateTo) {
+      parts.push(`${preset.dateFrom || '未指定'}〜${preset.dateTo || '未指定'}`);
+    }
+    return parts.join(' / ');
+  }
+
+  function renderPresetList() {
+    el.conditionPresetList.innerHTML = '';
+
+    if (state.presets.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'preset-condition-empty';
+      empty.textContent = '保存された条件はありません';
+      el.conditionPresetList.appendChild(empty);
+      return;
+    }
+
+    state.presets.forEach((preset, index) => {
+      const row = document.createElement('div');
+      row.className = 'preset-condition-row';
+
+      const summary = document.createElement('span');
+      summary.className = 'preset-summary';
+      summary.textContent = `プリセット${index + 1}: ${presetSummary(preset)}`;
+
+      const btnApply = document.createElement('button');
+      btnApply.type = 'button';
+      btnApply.textContent = '適用';
+      btnApply.addEventListener('click', () => applyConditionPreset(index));
+
+      const btnDelete = document.createElement('button');
+      btnDelete.type = 'button';
+      btnDelete.className = 'btn-delete';
+      btnDelete.textContent = '削除';
+      btnDelete.addEventListener('click', () => deletePreset(index));
+
+      row.appendChild(summary);
+      row.appendChild(btnApply);
+      row.appendChild(btnDelete);
+      el.conditionPresetList.appendChild(row);
+    });
+  }
+
+  function onSavePresetClick() {
+    el.presetMessage.classList.add('hidden');
+    const snapshot = buildPresetSnapshot();
+
+    if (state.presets.length < MAX_PRESETS) {
+      state.presets.push(snapshot);
+      savePresets();
+      renderPresetList();
+      showPresetMessage('保存しました');
+      return;
+    }
+
+    showOverwriteChooser(snapshot);
+  }
+
+  function showOverwriteChooser(snapshot) {
+    state.pendingPresetSnapshot = snapshot;
+    el.presetOverwriteList.innerHTML = '';
+
+    state.presets.forEach((preset, index) => {
+      const row = document.createElement('div');
+      row.className = 'preset-overwrite-row';
+
+      const summary = document.createElement('span');
+      summary.textContent = `プリセット${index + 1}: ${presetSummary(preset)}`;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'ここに上書き';
+      btn.addEventListener('click', () => overwritePreset(index));
+
+      row.appendChild(summary);
+      row.appendChild(btn);
+      el.presetOverwriteList.appendChild(row);
+    });
+
+    el.presetOverwriteChooser.classList.remove('hidden');
+  }
+
+  function hideOverwriteChooser() {
+    state.pendingPresetSnapshot = null;
+    el.presetOverwriteChooser.classList.add('hidden');
+  }
+
+  function overwritePreset(index) {
+    if (!state.pendingPresetSnapshot) return;
+    state.presets[index] = state.pendingPresetSnapshot;
+    savePresets();
+    hideOverwriteChooser();
+    renderPresetList();
+    showPresetMessage('上書きしました');
+  }
+
+  function deletePreset(index) {
+    state.presets.splice(index, 1);
+    savePresets();
+    renderPresetList();
+  }
+
+  function applyConditionPreset(index) {
+    const preset = state.presets[index];
+    if (!preset) return;
+
+    state.selectedUsers = new Set(preset.userNames.filter((name) => state.users.some((u) => u.name === name)));
+    state.selectedChannels = new Set(preset.channelNames.filter((name) => state.channels.includes(name)));
+    el.dateFrom.value = preset.dateFrom;
+    el.dateTo.value = preset.dateTo;
+
+    const sortRadio = document.querySelector(`input[name="sort"][value="${preset.sort}"]`);
+    if (sortRadio) sortRadio.checked = true;
+
+    renderConditionUserList();
+    renderConditionChannelList();
+    showPresetMessage(`プリセット${index + 1}を適用しました`);
+  }
+
+  function showPresetMessage(text) {
+    el.presetMessage.textContent = text;
+    el.presetMessage.classList.remove('hidden');
   }
 
   // ---------- 検索文言生成 ----------
@@ -526,6 +755,13 @@
 
     if (selectedUsers.length === 0 && selectedChannels.length === 0 && !dateFrom && !dateTo) {
       el.conditionError.textContent = '検索条件を1つ以上指定してください。';
+      el.conditionError.classList.remove('hidden');
+      return;
+    }
+
+    const noIdUsers = state.users.filter((u) => selectedUsers.includes(u.name) && !u.id);
+    if (noIdUsers.length > 0) {
+      el.conditionError.textContent = `メンバーIDが未登録のため検索できません: ${noIdUsers.map((u) => u.name).join('、')}`;
       el.conditionError.classList.remove('hidden');
       return;
     }
@@ -558,12 +794,7 @@
     if (selectedNames.length === 0) return '';
     const selected = state.users.filter((u) => selectedNames.includes(u.name));
     const sorted = selected.slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-    // 優先度: メンバーID > メールアドレス > ユーザー名(@なし)
-    const terms = sorted.map((u) => {
-      if (u.id) return `from:<@${u.id}>`;
-      if (u.email) return `from:${u.email}`;
-      return `from:${u.name}`;
-    });
+    const terms = sorted.map((u) => `from:<@${u.id}>`);
     return terms.length > 1 ? `( ${terms.join(' OR ')} )` : terms[0];
   }
 
@@ -598,13 +829,19 @@
     }
   }
 
+  function openSlack() {
+    // Slackアプリ(デスクトップ/モバイル)のカスタムURLスキームで検索画面を開く
+    const query = el.resultQuery.textContent;
+    window.location.href = `slack://search?query=${encodeURIComponent(query)}`;
+  }
+
   // ---------- エクスポート/インポート (端末間の手動同期) ----------
 
   function openExportBox() {
     el.importBox.classList.add('hidden');
     el.exportMessage.classList.add('hidden');
 
-    const payload = { users: state.users, channels: state.channels };
+    const payload = { users: state.users, channels: state.channels, presets: state.presets };
     el.exportText.value = JSON.stringify(payload);
     el.exportBox.classList.remove('hidden');
     el.exportText.focus();
@@ -656,20 +893,31 @@
 
     state.users = data.users.map((item) => (
       typeof item === 'string'
-        ? { name: item, id: '', email: '' }
-        : { name: String(item.name || ''), id: String(item.id || ''), email: String(item.email || '') }
+        ? { name: item, id: '' }
+        : { name: String(item.name || ''), id: String(item.id || '') }
     )).filter((u) => u.name);
     state.channels = data.channels.map((item) => String(item)).filter(Boolean);
+    state.presets = Array.isArray(data.presets)
+      ? data.presets.filter((p) => p && typeof p === 'object').map((p) => ({
+          userNames: Array.isArray(p.userNames) ? p.userNames : [],
+          channelNames: Array.isArray(p.channelNames) ? p.channelNames : [],
+          dateFrom: p.dateFrom || '',
+          dateTo: p.dateTo || '',
+          sort: p.sort === 'date' ? 'date' : 'user',
+        })).slice(0, MAX_PRESETS)
+      : [];
     state.selectedUsers.clear();
     state.selectedChannels.clear();
 
     saveUsers();
     saveList(CHANNELS_KEY, state.channels);
+    savePresets();
 
     renderUserManageList();
     renderChannelManageList();
     renderConditionUserList();
     renderConditionChannelList();
+    renderPresetList();
 
     el.importBox.classList.add('hidden');
   }

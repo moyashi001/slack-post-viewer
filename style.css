@@ -403,6 +403,98 @@ body {
   font-weight: 400;
 }
 
+/* 条件プリセット */
+.preset-condition-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preset-condition-header label {
+  margin: 0;
+}
+
+.preset-condition-list {
+  margin-top: 8px;
+}
+
+.preset-condition-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.preset-condition-row .preset-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-condition-row button {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+}
+
+.preset-condition-row .btn-delete {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.preset-condition-empty {
+  color: var(--text-sub);
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.preset-overwrite-chooser {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+}
+
+.preset-overwrite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.preset-overwrite-row:last-child {
+  border-bottom: none;
+}
+
+.preset-overwrite-row button {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  background: #fff;
+  color: var(--accent);
+}
+
 /* 結果画面 */
 .result-query {
   background: var(--card-bg);
