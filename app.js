@@ -115,6 +115,8 @@
         renderConditionUserList();
       });
     });
+    el.inputAddUser.addEventListener('input', () => el.inputAddUser.classList.remove('field-error-input'));
+    el.inputAddUserId.addEventListener('input', () => el.inputAddUserId.classList.remove('field-error-input'));
 
     el.formAddChannel.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -188,22 +190,28 @@
 
   function addUser(onDone) {
     el.userFormError.classList.add('hidden');
+    el.inputAddUser.classList.remove('field-error-input');
+    el.inputAddUserId.classList.remove('field-error-input');
+
     const name = normalizeName(el.inputAddUser.value);
     const id = normalizeMemberId(el.inputAddUserId.value);
 
     if (!name) {
       el.userFormError.textContent = '名前を入力してください。';
       el.userFormError.classList.remove('hidden');
+      el.inputAddUser.classList.add('field-error-input');
       return;
     }
     if (!id) {
       el.userFormError.textContent = 'メンバーIDが設定されていません。';
       el.userFormError.classList.remove('hidden');
+      el.inputAddUserId.classList.add('field-error-input');
       return;
     }
     if (state.users.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
       el.userFormError.textContent = 'すでに登録されています。';
       el.userFormError.classList.remove('hidden');
+      el.inputAddUser.classList.add('field-error-input');
       return;
     }
 
@@ -221,18 +229,23 @@
     onDone();
   }
 
-  function renameUser(oldName, newNameRaw, newIdRaw, onDone) {
-    const newName = normalizeName(newNameRaw);
-    const newId = normalizeMemberId(newIdRaw || '');
+  function renameUser(oldName, nameInput, idInput, onDone) {
+    nameInput.classList.remove('field-error-input');
+    idInput.classList.remove('field-error-input');
+
+    const newName = normalizeName(nameInput.value);
+    const newId = normalizeMemberId(idInput.value || '');
 
     if (!newName) {
       el.userFormError.textContent = '名前を入力してください。';
       el.userFormError.classList.remove('hidden');
+      nameInput.classList.add('field-error-input');
       return;
     }
     if (!newId) {
       el.userFormError.textContent = 'メンバーIDが設定されていません。';
       el.userFormError.classList.remove('hidden');
+      idInput.classList.add('field-error-input');
       return;
     }
 
@@ -304,19 +317,21 @@
     nameInput.className = 'manage-edit-input';
     nameInput.value = user.name;
     nameInput.placeholder = 'ユーザー名';
+    nameInput.addEventListener('input', () => nameInput.classList.remove('field-error-input'));
 
     const idInput = document.createElement('input');
     idInput.type = 'text';
     idInput.className = 'manage-edit-input';
     idInput.value = user.id;
     idInput.placeholder = 'SlackメンバーID';
+    idInput.addEventListener('input', () => idInput.classList.remove('field-error-input'));
 
     const btnSave = document.createElement('button');
     btnSave.type = 'button';
     btnSave.className = 'btn-save';
     btnSave.textContent = '保存';
     btnSave.addEventListener('click', () => {
-      renameUser(user.name, nameInput.value, idInput.value, onChange);
+      renameUser(user.name, nameInput, idInput, onChange);
     });
 
     const btnCancel = document.createElement('button');
@@ -485,6 +500,7 @@
     items.forEach(({ value, label: itemLabel }) => {
       const item = document.createElement('div');
       item.className = 'check-item';
+      item.dataset.value = value;
 
       const label = document.createElement('label');
 
@@ -497,6 +513,7 @@
         } else {
           selectedSet.delete(value);
         }
+        item.classList.remove('field-error-bg');
       });
 
       const span = document.createElement('span');
@@ -746,6 +763,7 @@
 
   function generateQuery() {
     el.conditionError.classList.add('hidden');
+    clearConditionFieldErrors();
 
     const selectedUsers = Array.from(state.selectedUsers);
     const selectedChannels = Array.from(state.selectedChannels);
@@ -763,6 +781,10 @@
     if (noIdUsers.length > 0) {
       el.conditionError.textContent = `メンバーIDが未登録のため検索できません: ${noIdUsers.map((u) => u.name).join('、')}`;
       el.conditionError.classList.remove('hidden');
+      noIdUsers.forEach((u) => {
+        const item = el.conditionUserList.querySelector(`[data-value="${CSS.escape(u.name)}"]`);
+        if (item) item.classList.add('field-error-bg');
+      });
       return;
     }
 
@@ -781,6 +803,12 @@
     el.resultQuery.textContent = query;
     el.copyMessage.classList.add('hidden');
     showScreen('result');
+  }
+
+  function clearConditionFieldErrors() {
+    el.conditionUserList.querySelectorAll('.field-error-bg').forEach((item) => {
+      item.classList.remove('field-error-bg');
+    });
   }
 
   function buildOrClause(names, prefix) {

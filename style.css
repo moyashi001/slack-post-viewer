@@ -342,6 +342,44 @@ body {
   font-weight: 400;
 }
 
+/* ユーザー選択は名前が短いため2〜3列のグリッド表示にする */
+#condition-user-list.check-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 6px;
+  border: none;
+  background: none;
+  overflow: visible;
+}
+
+#condition-user-list .check-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  padding: 8px 10px;
+}
+
+#condition-user-list .check-item label {
+  gap: 6px;
+}
+
+#condition-user-list .check-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 入力ミスの視覚的なフィードバック */
+.field-error-input {
+  background-color: #fff3b0 !important;
+  border-color: #d1a300 !important;
+}
+
+.check-item.field-error-bg {
+  background-color: #fff3b0;
+  border-color: #d1a300;
+}
+
 .preset-bar {
   display: flex;
   flex-wrap: wrap;
@@ -412,6 +450,23 @@ body {
 
 .preset-condition-header label {
   margin: 0;
+}
+
+.btn-save-preset {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--slack-purple);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--slack-purple);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-save-preset:active {
+  background: var(--slack-purple);
+  color: #fff;
 }
 
 .preset-condition-list {
