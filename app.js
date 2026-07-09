@@ -361,7 +361,9 @@
       ? [dateClause, userClause, channelClause]
       : [userClause, dateClause, channelClause];
 
-    const query = blocks.filter(Boolean).join('\n');
+    // Slackの検索欄は改行を含む貼り付けを正しく解釈できないことがあるため、
+    // 見た目の区切りではなく半角スペースのみで1行に連結する
+    const query = blocks.filter(Boolean).join(' ');
 
     el.resultQuery.textContent = query;
     el.copyMessage.classList.add('hidden');
