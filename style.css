@@ -1,22 +1,22 @@
 :root {
   --slack-purple: #4A154B;
   --slack-purple-dark: #350d36;
-  --accent: #1264a3;
-  --bg: #f7f7f8;
-  --card-bg: #ffffff;
-  --text: #1d1c1d;
-  --text-sub: #616061;
-  --border: #e0e0e2;
-  --error: #d1373f;
-  --success: #1a7f37;
+  --accent: #7CC2AF;
+  --bg: #17111F;
+  --card-bg: #251B36;
+  --text: #F4EFFA;
+  --text-sub: #B9AFC9;
+  --border: rgba(244, 239, 250, 0.16);
+  --error: #E38A72;
+  --success: #7CC2AF;
   --radius: 12px;
   --gold: #D99A2B;
   --gold-dark: #B87E1B;
   --gold-ink: #2A1B08;
-  --teal-bg: #DCEEE9;
-  --teal-text: #2E6E62;
-  --rust-bg: #F7E2DC;
-  --rust-text: #A6402C;
+  --teal-bg: #1D3630;
+  --teal-text: #7CC2AF;
+  --rust-bg: #3B241D;
+  --rust-text: #E38A72;
   --console-bg: #1F1730;
   --console-text: #F4EFFA;
 }
@@ -35,6 +35,17 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
+}
+
+input, textarea {
+  background: rgba(244, 239, 250, 0.06);
+  color: var(--text);
+  color-scheme: dark;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-sub);
+  opacity: 0.8;
 }
 
 #app {
@@ -90,7 +101,7 @@ body {
 
 .home-usage {
   margin-top: 24px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(244, 239, 250, 0.08);
   border-radius: var(--radius);
   padding: 16px;
 }
@@ -98,7 +109,7 @@ body {
 .home-usage h2 {
   font-size: 14px;
   margin: 0 0 12px;
-  color: var(--slack-purple);
+  color: var(--gold);
 }
 
 .steps {
@@ -181,13 +192,13 @@ body {
 }
 
 .btn-slack {
-  background: #fff;
+  background: var(--card-bg);
   color: var(--text);
   border: 1px solid var(--border);
 }
 
 .btn-slack:active {
-  background: #f4f4f4;
+  background: rgba(244, 239, 250, 0.14);
 }
 
 .btn-primary {
@@ -331,7 +342,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card-bg);
   color: var(--text);
 }
 
@@ -448,12 +459,13 @@ body {
 .field-error-input {
   background-color: #fff3b0 !important;
   border-color: #d1a300 !important;
+  color: var(--gold-ink) !important;
 }
 
 .pill-toggle.field-error-bg {
   background-color: #fff3b0;
   border-color: #d1a300;
-  color: var(--text);
+  color: var(--gold-ink);
 }
 
 .preset-groups {
@@ -479,7 +491,7 @@ body {
   padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: #fff;
+  background: var(--card-bg);
   color: var(--text);
   font-size: 13px;
   cursor: pointer;
@@ -537,18 +549,18 @@ body {
 .btn-save-preset {
   flex-shrink: 0;
   padding: 8px 14px;
-  border: 1px solid var(--slack-purple);
+  border: 1px solid var(--gold);
   border-radius: 8px;
-  background: #fff;
-  color: var(--slack-purple);
+  background: var(--card-bg);
+  color: var(--gold);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .btn-save-preset:active {
-  background: var(--slack-purple);
-  color: #fff;
+  background: var(--gold);
+  color: var(--gold-ink);
 }
 
 .preset-condition-list {
@@ -594,7 +606,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card-bg);
   color: var(--text);
 }
 
@@ -639,7 +651,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   border: 1px solid var(--accent);
-  background: #fff;
+  background: var(--card-bg);
   color: var(--accent);
 }
 
