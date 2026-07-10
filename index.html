@@ -27,12 +27,12 @@
 
     <div class="home-usage">
       <h2>使い方</h2>
-      <ol>
-        <li>「ユーザー管理」で検索したい相手のSlackメンバーIDを登録する</li>
-        <li>「チャンネル管理」で対象のチャンネル名を登録する（任意）</li>
-        <li>「検索条件を設定する」でユーザー・チャンネル・期間を選び、検索文言を生成する</li>
-        <li>「コピーする」でコピーし、Slackの検索欄に貼り付ける</li>
-      </ol>
+      <div class="steps">
+        <div class="step"><span class="step-num">1</span>「ユーザー管理」で検索したい相手のSlackメンバーIDを登録する</div>
+        <div class="step"><span class="step-num">2</span>「チャンネル管理」で対象のチャンネル名を登録する（任意）</div>
+        <div class="step"><span class="step-num">3</span>「検索条件を設定する」でユーザー・チャンネル・期間を選び、検索文言を生成する</div>
+        <div class="step"><span class="step-num">4</span>「コピーする」でコピーし、Slackの検索欄に貼り付ける</div>
+      </div>
     </div>
 
     <div class="data-io">
@@ -66,8 +66,14 @@
     <div id="user-manage-list" class="manage-list"></div>
 
     <form id="form-add-user" class="add-form add-form-user">
-      <input type="text" id="input-add-user" placeholder="ユーザー名 (例: 田中 太郎)" autocomplete="off">
-      <input type="text" id="input-add-user-id" placeholder="SlackメンバーID (例: U0123ABCD)" autocomplete="off">
+      <div class="field">
+        <label for="input-add-user">ユーザー名</label>
+        <input type="text" id="input-add-user" placeholder="田中 太郎" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="input-add-user-id">SlackメンバーID <span class="req">必須</span></label>
+        <input type="text" id="input-add-user-id" placeholder="U0123ABCD" autocomplete="off">
+      </div>
       <button type="submit" class="btn btn-primary btn-add">追加</button>
     </form>
     <p class="hint-text">検索はSlackメンバーIDのみで行うため、メンバーIDの登録は必須です。</p>
@@ -122,15 +128,25 @@
 
     <div class="form-group">
       <label>日付範囲</label>
-      <div class="preset-bar">
-        <button class="preset-btn" data-preset="today" type="button">今日</button>
-        <button class="preset-btn" data-preset="yesterday" type="button">昨日</button>
-        <button class="preset-btn" data-preset="dayBeforeYesterday" type="button">一昨日</button>
-        <button class="preset-btn" data-preset="thisWeek" type="button">今週</button>
-        <button class="preset-btn" data-preset="lastWeek" type="button">先週</button>
-        <button class="preset-btn" data-preset="thisMonth" type="button">今月</button>
-        <button class="preset-btn" data-preset="twoMonthsAgo" type="button">2か月前</button>
-        <button class="preset-btn" data-preset="threeMonthsAgo" type="button">3か月前</button>
+      <div class="preset-groups">
+        <div>
+          <div class="preset-group-label">単日</div>
+          <div class="preset-row">
+            <button class="preset-btn" data-preset="today" type="button">今日</button>
+            <button class="preset-btn" data-preset="yesterday" type="button">昨日</button>
+            <button class="preset-btn" data-preset="dayBeforeYesterday" type="button">一昨日</button>
+          </div>
+        </div>
+        <div>
+          <div class="preset-group-label">期間</div>
+          <div class="preset-row">
+            <button class="preset-btn" data-preset="thisWeek" type="button">今週</button>
+            <button class="preset-btn" data-preset="lastWeek" type="button">先週</button>
+            <button class="preset-btn" data-preset="thisMonth" type="button">今月</button>
+            <button class="preset-btn" data-preset="twoMonthsAgo" type="button">2か月前</button>
+            <button class="preset-btn" data-preset="threeMonthsAgo" type="button">3か月前</button>
+          </div>
+        </div>
       </div>
       <div class="date-range">
         <div class="date-field">
@@ -172,6 +188,7 @@
     </header>
 
     <pre id="result-query" class="result-query"></pre>
+    <div id="result-breakdown" class="result-breakdown"></div>
     <button id="btn-copy" class="btn btn-primary" type="button">コピーする</button>
     <p id="copy-message" class="copy-message hidden">コピーしました</p>
     <button id="btn-open-slack" class="btn btn-slack" type="button">Slackを開く</button>

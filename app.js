@@ -14,6 +14,7 @@
     presets: [],    // { userNames: string[], channelNames: string[], dateFrom: string, dateTo: string, datePreset: string|null }[]
     pendingPresetSnapshot: null,
     activeDatePreset: null,
+    lastQuery: '',
   };
 
   const el = {};
@@ -82,6 +83,7 @@
     el.btnCancelOverwrite = document.getElementById('btn-cancel-overwrite');
 
     el.resultQuery = document.getElementById('result-query');
+    el.resultBreakdown = document.getElementById('result-breakdown');
     el.btnCopy = document.getElementById('btn-copy');
     el.copyMessage = document.getElementById('copy-message');
     el.btnOpenSlack = document.getElementById('btn-open-slack');
@@ -272,10 +274,6 @@
     onDone();
   }
 
-  function userManageLabel(user) {
-    return user.id ? `${user.name} (ID: ${user.id})` : `${user.name} (ID未登録)`;
-  }
-
   function renderUserManageList() {
     const container = el.userManageList;
     container.innerHTML = '';
@@ -299,7 +297,11 @@
 
       const nameWrap = document.createElement('span');
       nameWrap.className = 'manage-name';
-      nameWrap.textContent = userManageLabel(user);
+      nameWrap.textContent = user.name;
+
+      const idChip = document.createElement('span');
+      idChip.className = user.id ? 'chip chip-ok' : 'chip chip-warn';
+      idChip.textContent = user.id ? 'ID登録済み' : 'ID未登録';
 
       const btnEdit = document.createElement('button');
       btnEdit.type = 'button';
@@ -317,6 +319,7 @@
       });
 
       row.appendChild(nameWrap);
+      row.appendChild(idChip);
       row.appendChild(btnEdit);
       row.appendChild(btnDelete);
       container.appendChild(row);
@@ -535,32 +538,30 @@
     emptyEl.classList.add('hidden');
 
     items.forEach(({ value, label: itemLabel }) => {
-      const item = document.createElement('div');
-      item.className = 'check-item';
-      item.dataset.value = value;
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'pill-toggle';
+      chip.dataset.value = value;
+      chip.textContent = itemLabel;
 
-      const label = document.createElement('label');
+      const isSelected = selectedSet.has(value);
+      chip.classList.toggle('on', isSelected);
+      chip.setAttribute('aria-pressed', String(isSelected));
 
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = selectedSet.has(value);
-      checkbox.addEventListener('change', () => {
-        if (checkbox.checked) {
+      chip.addEventListener('click', () => {
+        const nowSelected = !selectedSet.has(value);
+        if (nowSelected) {
           selectedSet.add(value);
         } else {
           selectedSet.delete(value);
         }
-        item.classList.remove('field-error-bg');
+        chip.classList.toggle('on', nowSelected);
+        chip.setAttribute('aria-pressed', String(nowSelected));
+        chip.classList.remove('field-error-bg');
         if (onToggle) onToggle();
       });
 
-      const span = document.createElement('span');
-      span.textContent = itemLabel;
-
-      label.appendChild(checkbox);
-      label.appendChild(span);
-      item.appendChild(label);
-      container.appendChild(item);
+      container.appendChild(chip);
     });
   }
 
@@ -724,6 +725,12 @@
       btnDelete.addEventListener('click', () => deletePreset(index));
 
       row.appendChild(summary);
+      if (preset.datePreset && DATE_PRESET_LABELS[preset.datePreset]) {
+        const badge = document.createElement('span');
+        badge.className = 'preset-badge';
+        badge.textContent = '↻ 今日基準';
+        row.appendChild(badge);
+      }
       row.appendChild(btnApply);
       row.appendChild(btnDelete);
       el.conditionPresetList.appendChild(row);
@@ -867,11 +874,48 @@
 
     // Slackの検索欄は改行を含む貼り付けを正しく解釈できないことがあるため、
     // 見た目の区切りではなく半角スペースのみで1行に連結する
-    const query = blocks.filter(Boolean).join(' ');
+    state.lastQuery = blocks.filter(Boolean).join(' ');
 
-    el.resultQuery.textContent = query;
+    renderResultQuery(userClause, dateClause, channelClause);
+    renderResultBreakdown(selectedUsers.length, selectedChannels.length, dateFrom, dateTo);
+
     el.copyMessage.classList.add('hidden');
     showScreen('result');
+  }
+
+  function renderResultQuery(userClause, dateClause, channelClause) {
+    el.resultQuery.innerHTML = '';
+    const tokens = [
+      { text: userClause, cls: 'tok-user' },
+      { text: dateClause, cls: 'tok-date' },
+      { text: channelClause, cls: 'tok-chan' },
+    ].filter((t) => t.text);
+
+    tokens.forEach((t, i) => {
+      if (i > 0) el.resultQuery.appendChild(document.createTextNode(' '));
+      const span = document.createElement('span');
+      span.className = t.cls;
+      span.textContent = t.text;
+      el.resultQuery.appendChild(span);
+    });
+  }
+
+  function renderResultBreakdown(userCount, channelCount, dateFrom, dateTo) {
+    el.resultBreakdown.innerHTML = '';
+    const parts = [`ユーザー ${userCount}件`, `チャンネル ${channelCount}件`];
+
+    if (state.activeDatePreset && DATE_PRESET_LABELS[state.activeDatePreset]) {
+      parts.push(`期間: ${DATE_PRESET_LABELS[state.activeDatePreset]}`);
+    } else if (dateFrom || dateTo) {
+      parts.push(`期間: ${dateFrom || '未指定'}〜${dateTo || '未指定'}`);
+    }
+
+    parts.forEach((text) => {
+      const chip = document.createElement('span');
+      chip.className = 'breakdown-chip';
+      chip.textContent = text;
+      el.resultBreakdown.appendChild(chip);
+    });
   }
 
   function clearConditionFieldErrors() {
@@ -910,7 +954,7 @@
   }
 
   async function copyResult() {
-    const text = el.resultQuery.textContent;
+    const text = state.lastQuery;
     try {
       await navigator.clipboard.writeText(text);
       el.copyMessage.classList.remove('hidden');
@@ -935,8 +979,7 @@
 
   function openSlack() {
     // Slackアプリ(デスクトップ/モバイル)のカスタムURLスキームで検索画面を開く
-    const query = el.resultQuery.textContent;
-    window.location.href = `slack://search?query=${encodeURIComponent(query)}`;
+    window.location.href = `slack://search?query=${encodeURIComponent(state.lastQuery)}`;
   }
 
   // ---------- エクスポート/インポート (端末間の手動同期) ----------

@@ -10,6 +10,15 @@
   --error: #d1373f;
   --success: #1a7f37;
   --radius: 12px;
+  --gold: #D99A2B;
+  --gold-dark: #B87E1B;
+  --gold-ink: #2A1B08;
+  --teal-bg: #DCEEE9;
+  --teal-text: #2E6E62;
+  --rust-bg: #F7E2DC;
+  --rust-text: #A6402C;
+  --console-bg: #1F1730;
+  --console-text: #F4EFFA;
 }
 
 * {
@@ -79,17 +88,6 @@ body {
   gap: 12px;
 }
 
-/* ホーム画面の背景(紫グラデーション)に紫のプライマリボタンが埋もれるため上書き */
-#screen-home .btn-primary {
-  background: #ffffff;
-  color: var(--slack-purple);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-#screen-home .btn-primary:active {
-  background: #f0f0f0;
-}
-
 .home-usage {
   margin-top: 24px;
   background: rgba(255, 255, 255, 0.95);
@@ -99,16 +97,37 @@ body {
 
 .home-usage h2 {
   font-size: 14px;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   color: var(--slack-purple);
 }
 
-.home-usage ol {
-  margin: 0;
-  padding-left: 20px;
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.step {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
   font-size: 13px;
-  line-height: 1.8;
+  line-height: 1.6;
   color: var(--text);
+}
+
+.step-num {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--gold-ink);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .data-io {
@@ -172,12 +191,13 @@ body {
 }
 
 .btn-primary {
-  background: var(--slack-purple);
-  color: #fff;
+  background: var(--gold);
+  color: var(--gold-ink);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 .btn-primary:active {
-  background: var(--slack-purple-dark);
+  background: var(--gold-dark);
 }
 
 .btn-text {
@@ -266,6 +286,26 @@ body {
   white-space: nowrap;
 }
 
+.chip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+.chip-ok {
+  background: var(--teal-bg);
+  color: var(--teal-text);
+}
+
+.chip-warn {
+  background: var(--rust-bg);
+  color: var(--rust-text);
+}
+
 .manage-row .manage-edit-input {
   flex: 1;
   padding: 6px 8px;
@@ -327,20 +367,39 @@ body {
 }
 
 .add-form-user {
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
 }
 
-.add-form-user input {
-  flex: 1 1 100%;
+.field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-bottom: 4px;
 }
 
-.add-form-user .btn-add {
-  flex: 1 1 100%;
+.field .req {
+  color: var(--gold-dark);
+  font-weight: 700;
+}
+
+.field input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
 }
 
 .add-form .btn-add {
   width: auto;
   padding: 0 18px;
+}
+
+.add-form-user .btn-add {
+  width: 100%;
+  padding: 14px 16px;
+  margin-top: 4px;
 }
 
 /* 条件入力画面 */
@@ -356,59 +415,33 @@ body {
   margin-bottom: 8px;
 }
 
+/* ユーザー/チャンネル選択は名前が短いため2〜3列のトグルチップグリッドにする */
 .check-list {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--card-bg);
-  overflow: hidden;
-}
-
-.check-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  font-size: 15px;
-}
-
-.check-item:last-child {
-  border-bottom: none;
-}
-
-.check-item label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  margin: 0;
-  font-weight: 400;
-}
-
-/* ユーザー選択は名前が短いため2〜3列のグリッド表示にする */
-#condition-user-list.check-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 6px;
-  border: none;
-  background: none;
-  overflow: visible;
 }
 
-#condition-user-list .check-item {
-  border: 1px solid var(--border);
+.pill-toggle {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 8px;
   border-radius: 8px;
+  border: 1px solid var(--border);
   background: var(--card-bg);
-  padding: 8px 10px;
-}
-
-#condition-user-list .check-item label {
-  gap: 6px;
-}
-
-#condition-user-list .check-item span {
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pill-toggle.on {
+  background: var(--gold);
+  border-color: var(--gold-dark);
+  color: var(--gold-ink);
 }
 
 /* 入力ミスの視覚的なフィードバック */
@@ -417,16 +450,29 @@ body {
   border-color: #d1a300 !important;
 }
 
-.check-item.field-error-bg {
+.pill-toggle.field-error-bg {
   background-color: #fff3b0;
   border-color: #d1a300;
+  color: var(--text);
 }
 
-.preset-bar {
+.preset-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.preset-group-label {
+  font-size: 11px;
+  color: var(--text-sub);
+  margin-bottom: 4px;
+}
+
+.preset-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 10px;
 }
 
 .preset-btn {
@@ -440,9 +486,10 @@ body {
 }
 
 .preset-btn.active {
-  border-color: var(--slack-purple);
-  color: var(--slack-purple);
-  font-weight: 600;
+  background: var(--gold);
+  border-color: var(--gold-dark);
+  color: var(--gold-ink);
+  font-weight: 700;
 }
 
 .date-range {
@@ -467,6 +514,13 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 15px;
+}
+
+/* 条件が増えてもスクロールせず押せるように画面下部に固定する */
+#btn-generate {
+  position: sticky;
+  bottom: 8px;
+  box-shadow: 0 -8px 16px -8px rgba(0, 0, 0, 0.2);
 }
 
 /* 条件プリセット */
@@ -518,6 +572,17 @@ body {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--teal-text);
+  background: var(--teal-bg);
+  padding: 2px 8px;
+  border-radius: 20px;
   white-space: nowrap;
 }
 
@@ -578,10 +643,10 @@ body {
   color: var(--accent);
 }
 
-/* 結果画面 */
+/* 結果画面: 生成結果を修飾子ごとに色分けしたコンソール風表示にする */
 .result-query {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
+  background: var(--console-bg);
+  color: var(--console-text);
   border-radius: var(--radius);
   padding: 16px;
   font-size: 14px;
@@ -589,8 +654,28 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
   font-family: "SF Mono", "Consolas", monospace;
-  margin: 0 0 16px;
+  margin: 0 0 12px;
   min-height: 100px;
+}
+
+.tok-user { color: var(--gold); }
+.tok-date { color: #7CC2AF; }
+.tok-chan { color: #C9AEDD; }
+
+.result-breakdown {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+}
+
+.breakdown-chip {
+  font-size: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--text-sub);
+  padding: 4px 10px;
+  border-radius: 20px;
 }
 
 .copy-message {
