@@ -11,8 +11,9 @@
     channels: [],   // string[]
     selectedUsers: new Set(),
     selectedChannels: new Set(),
-    presets: [],    // { userNames: string[], channelNames: string[], dateFrom: string, dateTo: string }[]
+    presets: [],    // { userNames: string[], channelNames: string[], dateFrom: string, dateTo: string, datePreset: string|null }[]
     pendingPresetSnapshot: null,
+    activeDatePreset: null,
   };
 
   const el = {};
@@ -98,7 +99,10 @@
   }
 
   function bindEvents() {
-    el.btnGotoCondition.addEventListener('click', () => showScreen('condition'));
+    el.btnGotoCondition.addEventListener('click', () => {
+      clearCondition();
+      showScreen('condition');
+    });
     el.btnGotoUsers.addEventListener('click', () => showScreen('users'));
     el.btnGotoChannels.addEventListener('click', () => showScreen('channels'));
 
@@ -128,8 +132,15 @@
     });
 
     el.presetButtons.forEach((btn) => {
-      btn.addEventListener('click', () => applyPreset(btn.dataset.preset, btn));
+      btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
     });
+
+    const clearActiveDatePreset = () => {
+      state.activeDatePreset = null;
+      el.presetButtons.forEach((b) => b.classList.remove('active'));
+    };
+    el.dateFrom.addEventListener('input', clearActiveDatePreset);
+    el.dateTo.addEventListener('input', clearActiveDatePreset);
 
     el.chkSelectAllUsers.addEventListener('change', onSelectAllUsersChange);
     el.btnClearCondition.addEventListener('click', clearCondition);
@@ -563,7 +574,7 @@
     return d;
   }
 
-  function applyPreset(preset, btn) {
+  function applyPreset(preset) {
     const today = new Date();
     let from;
     let to;
@@ -620,7 +631,8 @@
     el.dateFrom.value = formatDateInput(from);
     el.dateTo.value = formatDateInput(to);
 
-    el.presetButtons.forEach((b) => b.classList.toggle('active', b === btn));
+    state.activeDatePreset = preset;
+    el.presetButtons.forEach((b) => b.classList.toggle('active', b.dataset.preset === preset));
   }
 
   function formatDateInput(d) {
@@ -629,6 +641,17 @@
   }
 
   // ---------- 検索条件プリセット (最大3件保存) ----------
+
+  const DATE_PRESET_LABELS = {
+    today: '今日',
+    yesterday: '昨日',
+    dayBeforeYesterday: '一昨日',
+    thisWeek: '今週',
+    lastWeek: '先週',
+    thisMonth: '今月',
+    twoMonthsAgo: '2か月前',
+    threeMonthsAgo: '3か月前',
+  };
 
   function loadPresets() {
     const raw = loadList(PRESETS_KEY);
@@ -639,6 +662,7 @@
         channelNames: Array.isArray(p.channelNames) ? p.channelNames : [],
         dateFrom: p.dateFrom || '',
         dateTo: p.dateTo || '',
+        datePreset: p.datePreset || null,
       }))
       .slice(0, MAX_PRESETS);
   }
@@ -653,6 +677,7 @@
       channelNames: Array.from(state.selectedChannels),
       dateFrom: el.dateFrom.value,
       dateTo: el.dateTo.value,
+      datePreset: state.activeDatePreset,
     };
   }
 
@@ -660,7 +685,9 @@
     const parts = [];
     parts.push(`ユーザー${preset.userNames.length}件`);
     parts.push(`チャンネル${preset.channelNames.length}件`);
-    if (preset.dateFrom || preset.dateTo) {
+    if (preset.datePreset && DATE_PRESET_LABELS[preset.datePreset]) {
+      parts.push(DATE_PRESET_LABELS[preset.datePreset]);
+    } else if (preset.dateFrom || preset.dateTo) {
       parts.push(`${preset.dateFrom || '未指定'}〜${preset.dateTo || '未指定'}`);
     }
     return parts.join(' / ');
@@ -768,8 +795,16 @@
 
     state.selectedUsers = new Set(preset.userNames.filter((name) => state.users.some((u) => u.name === name)));
     state.selectedChannels = new Set(preset.channelNames.filter((name) => state.channels.includes(name)));
-    el.dateFrom.value = preset.dateFrom;
-    el.dateTo.value = preset.dateTo;
+
+    if (preset.datePreset && DATE_PRESET_LABELS[preset.datePreset]) {
+      // 保存時のプリセット種別を今日の日付基準で再計算する(保存時点の固定日付を使い回さない)
+      applyPreset(preset.datePreset);
+    } else {
+      el.dateFrom.value = preset.dateFrom;
+      el.dateTo.value = preset.dateTo;
+      state.activeDatePreset = null;
+      el.presetButtons.forEach((b) => b.classList.remove('active'));
+    }
 
     renderConditionUserList();
     renderConditionChannelList();
@@ -786,6 +821,7 @@
     state.selectedChannels.clear();
     el.dateFrom.value = '';
     el.dateTo.value = '';
+    state.activeDatePreset = null;
     el.presetButtons.forEach((b) => b.classList.remove('active'));
 
     el.conditionError.classList.add('hidden');
@@ -971,6 +1007,7 @@
           channelNames: Array.isArray(p.channelNames) ? p.channelNames : [],
           dateFrom: p.dateFrom || '',
           dateTo: p.dateTo || '',
+          datePreset: p.datePreset || null,
         })).slice(0, MAX_PRESETS)
       : [];
     state.selectedUsers.clear();
